@@ -45,20 +45,30 @@ add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 # --- TÍTULO PRINCIPAL NO TOPO ---
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-def buscar_dados_cccv():
-    url = "https://www.cccv.org.br/cotacao/"
-    headers = {"User-Agent": "Mozilla/5.0"}
+def buscar_mercado():
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        tabelas = pd.read_html(response.text)
-        df = tabelas[0]
-        dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        dura = float(str(dura_str).replace('.', '').replace(',', '.'))
-        rio = float(str(rio_str).replace('.', '').replace(',', '.'))
-        return dura, rio
-    except:
-        return 1694.00, 1349.00 
+        # Criamos os objetos para os tickers
+        ticker_ny = yf.Ticker("KC=F")
+        ticker_usd = yf.Ticker("USDBRL=X")
+
+        # O segredo está no .info, que traz os dados prontos do painel do Yahoo
+        info_ny = ticker_ny.info
+        info_usd = ticker_usd.info
+
+        # Pegamos o preço atual
+        cot_ny = info_ny.get('regularMarketPrice', 0.0)
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
+
+        # Pegamos a porcentagem que o próprio Yahoo calculou
+        # O yfinance entrega 0.80 como 0.80, então dividimos por 100 
+        # para que o st.metric formatado com % exiba corretamente.
+        v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
+
+        return cot_ny, v_ny, cot_usd, v_usd
+    except Exception as e:
+        print(f"Erro ao capturar dados diretos: {e}")
+        return 0.0, 0.0, 0.0, 0.0 
 
 def buscar_mercado():
     try:
