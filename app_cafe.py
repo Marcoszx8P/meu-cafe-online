@@ -38,21 +38,33 @@ def buscar_mercado():
         return 0.0, 0.0, 0.0, 0.0
 
 st.divider()
-with st.expander("📖 Como funciona este Monitor? (Clique para ver detalhes)"):
-    st.markdown(f"""
-    ### ☕ Lógica de Cálculo
-    Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo:
-    
-    1.  **Preço Base:** Buscamos diariamente as cotações oficiais de **Bebida Dura** e **Bebida Rio** diretamente do site do **CCCV** (Centro do Comércio de Café de Vitória).
-    2.  **Variação Combinada:** O sistema monitora em tempo real a oscilação da **Bolsa de Nova York (KC=F)** e do **Dólar (USD/BRL)**. 
-    3.  **Alvo Estimado:** Aplicamos a soma dessas variações sobre o preço base. Se a Bolsa sobe 1% e o Dólar sobe 1%, o alvo estimado subirá aproximadamente 2% sobre o valor de fechamento do CCCV.
 
-    ---
-    ⚠️ **Aviso de Versão Beta**
-    Este site ainda está em fase de testes (**Beta**). Os valores apresentados são estimativas matemáticas para auxiliar na tomada de decisão e não devem ser considerados como garantia de preço de compra ou venda. As cooperativas locais podem aplicar diferenciais (basis) específicos.
-    
-    **Criado por: Marcos Gomes**
-    """)
+st.markdown("### 📖 Como funciona este Monitor?")
+st.write("""
+Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo. 
+A lógica funciona em três etapas principais:
+""")
+
+# Usando colunas para a explicação ficar bem organizada
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+
+with exp_col1:
+    st.markdown("**1. Preço Base (CCCV)**")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
+
+with exp_col2:
+    st.markdown("**2. Variação Combinada**")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
+
+with exp_col3:
+    st.markdown("**3. Alvo Estimado**")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
+
+st.info("⚠️ **Aviso de Versão Beta:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
+
+# Seu nome bem grande no final
+st.markdown("<br><br>", unsafe_allow_html=True) # Pula um espaço
+st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
