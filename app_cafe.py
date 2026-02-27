@@ -18,7 +18,6 @@ def buscar_dados_cccv():
         df = tabelas[0]
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        # Adicionado conforme solicitado
         conilon_str = df.loc[df[0].str.contains("conilon", case=False), 1].values[0]
         
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
@@ -30,16 +29,17 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Tickers estáveis: KC=F (Arábica), LRC=F (Conilon Londres), USDBRL=X (Dólar)
+        # Tickers estáveis para evitar o erro de 0.00
         t_ny = yf.Ticker("KC=F")
-        t_lon = yf.Ticker("LRC=F")
+        t_lon = yf.Ticker("LRC=F") # Ticker correto para Londres
         t_usd = yf.Ticker("USDBRL=X")
         
-        # O segredo para não dar 0.00: usar o histórico dos últimos 2 dias
+        # Captura via histórico (2 dias) para garantir que o dado exista
         h_ny = t_ny.history(period="2d")
         h_lon = t_lon.history(period="2d")
         h_usd = t_usd.history(period="2d")
         
+        # Preços de fechamento
         cot_ny = h_ny['Close'].iloc[-1]
         v_ny = (h_ny['Close'].iloc[-1] / h_ny['Close'].iloc[-2]) - 1
         
@@ -97,9 +97,25 @@ base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
+st.markdown("### 📖 Como funciona este Painel?")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
-# Logica de exibição original mantida
-if ny_p == 0 or lon_p == 0:
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+with exp_col1:
+    st.markdown("**1. Preço Base (CCCV)**")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura, Bebida Rio e Conilon diretamente do site do CCCV em Vitória.")
+with exp_col2:
+    st.markdown("**2. Variação Combinada**")
+    st.write("O sistema monitora a oscilação da Bolsa de NY (Arábica), Bolsa de Londres (Conilon) e do Dólar Comercial.")
+with exp_col3:
+    st.markdown("**3. Alvo Estimado**")
+    st.write("Aplicamos a soma das variações das bolsas e do Dólar sobre o preço base para prever a tendência.")
+
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
+st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
+
+# A correção principal está aqui: ny_p agora virá preenchido pelo history
+if ny_p == 0:
     st.warning("Carregando dados da bolsa... Se persistir, verifique sua conexão.")
 else:
     c1, c2, c3, c4 = st.columns(4)
@@ -146,5 +162,4 @@ else:
         st.write(f"Variação Combinada (Londres + Dólar): **{var_total_conilon:.2%}**")
 
 st.divider()
-st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
 st.caption("Atualizado via CCCV e Yahoo Finance.")
