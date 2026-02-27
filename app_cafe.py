@@ -62,28 +62,32 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Buscamos 7 dias para garantir que pegamos os últimos dois pregões úteis
-        cafe_ny = yf.download("KC=F", period="7d", interval="1d", progress=False)
-        dolar = yf.download("USDBRL=X", period="7d", interval="1d", progress=False)
+        # 1. Buscamos um período maior para garantir dados válidos
+        cafe_ny = yf.download("KC=F", period="5d", interval="1d", progress=False)
+        dolar = yf.download("USDBRL=X", period="5d", interval="1d", progress=False)
 
-        # Seleciona apenas a coluna 'Close' e remove valores vazios
-        # O .tail(2) garante que pegamos os dois últimos dias com dados
-        df_ny = cafe_ny['Close'].dropna().tail(2)
-        df_usd = dolar['Close'].dropna().tail(2)
+        # 2. CORREÇÃO CRUCIAL: Se os dados vierem com colunas duplas (MultiIndex), 
+        # nós "achatamos" para o código conseguir ler
+        if isinstance(cafe_ny.columns, pd.MultiIndex):
+            cafe_ny.columns = cafe_ny.columns.get_level_values(0)
+        if isinstance(dolar.columns, pd.MultiIndex):
+            dolar.columns = dolar.columns.get_level_values(0)
 
-        # Café NY: Preço atual e cálculo da variação (igual ao da foto)
+        # 3. Removemos dias sem dados (fins de semana/feriados)
+        df_ny = cafe_ny['Close'].dropna()
+        df_usd = dolar['Close'].dropna()
+
+        # 4. Pegamos os dois últimos preços reais para a variação bater com a foto
         cot_ny = float(df_ny.iloc[-1])
         prev_ny = float(df_ny.iloc[-2])
         v_ny = (cot_ny / prev_ny) - 1
 
-        # Dólar: Preço atual e variação
         cot_usd = float(df_usd.iloc[-1])
         prev_usd = float(df_usd.iloc[-2])
         v_usd = (cot_usd / prev_usd) - 1
 
         return cot_ny, v_ny, cot_usd, v_usd
-    except Exception as e:
-        # Em caso de erro, retorna zero para não travar o site
+    except Exception:
         return 0.0, 0.0, 0.0, 0.0
 
 st.divider()
