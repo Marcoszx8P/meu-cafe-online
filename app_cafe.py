@@ -8,7 +8,7 @@ import os
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
-# --- 2. FUNÇÕES DE BUSCA ---
+# --- 2. FUNÇÕES DE BUSCA (Corrigidas) ---
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -36,3 +36,96 @@ def buscar_mercado():
         v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
         return cot_ny, v_ny, cot_usd, v_usd
     except:
+        return 0.0, 0.0, 0.0, 0.0
+
+# --- 3. FUNÇÃO DE ESTILO E FUNDO ---
+def add_bg_and_style(image_file):
+    if os.path.exists(image_file):
+        with open(image_file, "rb") as f:
+            encoded_string = base64.b64encode(f.read()).decode()
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("data:image/avif;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+            }}
+            /* TEXTOS EM BRANCO PURO COM SOMBRA FORTE */
+            h1, h2, h3, p, span, label, div {{
+                color: #FFFFFF !important;
+                text-shadow: 2px 2px 8px rgba(0,0,0,1) !important;
+            }}
+            .main-title {{
+                text-align: center;
+                font-size: 50px !important;
+                font-weight: bold;
+                margin-bottom: 20px;
+                color: #FFFFFF !important;
+            }}
+            [data-testid="stMetricValue"] {{
+                color: white !important;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+# --- 4. EXECUÇÃO DO PAINEL ---
+add_bg_and_style('delicioso_cafe.avif')
+
+st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
+
+# Chamando as funções
+base_dura, base_rio = buscar_dados_cccv()
+ny_p, ny_v, usd_p, usd_v = buscar_mercado()
+
+st.divider()
+st.markdown("### 📖 Como funciona este Painel?")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
+
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+with exp_col1:
+    st.markdown("**1. Preço Base (CCCV)**")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV.")
+with exp_col2:
+    st.markdown("**2. Variação Combinada**")
+    st.write("Monitoramos em tempo real a oscilação da Bolsa de Nova York e do Dólar.")
+with exp_col3:
+    st.markdown("**3. Alvo Estimado**")
+    st.write("Aplicamos a soma das variações sobre o preço base.")
+
+st.info("⚠️ **Aviso:** Este site está em fase de testes.")
+st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
+
+if ny_p == 0:
+    st.warning("Carregando dados da bolsa...")
+else:
+    var_total = ny_v + usd_v
+    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF4B4B"
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
+    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
+
+    st.divider()
+    col_d, col_r = st.columns(2)
+
+    # BEBIDA DURA
+    mudanca_dura = base_dura * var_total
+    with col_d:
+        st.subheader("☕ Bebida DURA")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
+
+    # BEBIDA RIO
+    mudanca_rio = base_rio * var_total
+    with col_r:
+        st.subheader("☕ Bebida RIO")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
+
+st.divider()
+st.caption("Atualizado via CCCV e Yahoo Finance.")
