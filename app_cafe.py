@@ -17,13 +17,17 @@ def buscar_dados_cccv():
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
         
+        # O CCCV costuma organizar: [0] Descrição, [1] Dura, [2] Rio, [3] Conilon
+        # Vamos buscar por palavras-chave para evitar erro de coluna
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
         
+        # O Conilon geralmente fica na última linha/coluna de preços
+        # Tentamos buscar o valor na linha que contém '7/8' ou na coluna 3
         try:
             conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
         except:
-            conilon_str = df.iloc[-1, 1]
+            conilon_str = df.iloc[-1, 1] # Pega o último valor da tabela se falhar
 
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
@@ -31,28 +35,29 @@ def buscar_dados_cccv():
         
         return dura, rio, conilon
     except:
+        # Fallback com valores de mercado atuais caso o site mude a estrutura
         return 1696.00, 1349.00, 972.00 
 
 def buscar_mercado():
     try:
-        # Tickers: KC=F (NY/Arábica), RC=F (Londres/Conilon), USDBRL=X (Dólar)
         ticker_ny = yf.Ticker("KC=F")
-        ticker_lon = yf.Ticker("RC=F")
+        ticker_lon = yf.Ticker("RC=F") # ADICIONADO LONDRES
         ticker_usd = yf.Ticker("USDBRL=X")
         
-        # Coleta NY
-        v_ny = ticker_ny.info.get('regularMarketChangePercent', 0.0) / 100
-        p_ny = ticker_ny.info.get('regularMarketPrice', 0.0)
+        info_ny = ticker_ny.info
+        info_lon = ticker_lon.info # ADICIONADO LONDRES
+        info_usd = ticker_usd.info
         
-        # Coleta Londres
-        v_lon = ticker_lon.info.get('regularMarketChangePercent', 0.0) / 100
-        p_lon = ticker_lon.info.get('regularMarketPrice', 0.0)
+        cot_ny = info_ny.get('regularMarketPrice', 0.0)
+        v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
         
-        # Coleta Dólar
-        v_usd = ticker_usd.info.get('regularMarketChangePercent', 0.0) / 100
-        p_usd = ticker_usd.info.get('regularMarketPrice', 0.0)
+        cot_lon = info_lon.get('regularMarketPrice', 0.0) # ADICIONADO LONDRES
+        v_lon = info_lon.get('regularMarketChangePercent', 0.0) / 100 # ADICIONADO LONDRES
         
-        return p_ny, v_ny, p_lon, v_lon, p_usd, v_usd
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
+        v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
+        
+        return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
@@ -108,53 +113,49 @@ with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
     st.write("Cotações oficiais de Bebida Dura, Rio e Conilon (Tipo 7/8) de Vitória.")
 with exp_col2:
-    st.markdown("**2. Inteligência por Tipo**")
-    st.write("O Arábica segue a Bolsa de **Nova York**, enquanto o Conilon segue a Bolsa de **Londres**.")
+    st.markdown("**2. Variação Combinada**")
+    st.write("Monitoramento de NY (Arábica), Londres (Conilon) e Dólar em tempo real.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Somamos a variação da Bolsa respectiva + Dólar sobre o preço base do dia.")
+    st.write("Aplicação da oscilação financeira sobre o preço real de hoje.")
 
 st.info("⚠️ **Aviso:** Valores estimativos para auxílio à decisão.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
-if ny_p == 0 or lon_p == 0:
-    st.warning("Carregando dados das bolsas mundiais...")
+if ny_p == 0:
+    st.warning("Carregando dados da bolsa...")
 else:
-    # Indicadores principais
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
-    c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
-    
-    # Tendência combinada (média simples apenas para o resumo)
-    tendencia_geral = (ny_v + lon_v + usd_v) / 2
-    c4.metric("Tendência Média", f"{(tendencia_geral*100):.2f}%")
-
-    st.divider()
-    col_d, col_r, col_c = st.columns(3)
-
-    # CÁLCULOS ESPECÍFICOS
+    # Lógica de cores baseada nas bolsas e dólar
     var_arabica = ny_v + usd_v
     var_conilon = lon_v + usd_v
     
     cor_ara = "#00FF00" if var_arabica >= 0 else "#FF4B4B"
     cor_con = "#00FF00" if var_conilon >= 0 else "#FF4B4B"
 
-    # BEBIDA DURA (Baseado em NY)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
+    c2.metric("Bolsa Londres (Robusta)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
+    c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c4.metric("Tendência Média", f"{((var_arabica + var_conilon)/2*100):.2f}%")
+
+    st.divider()
+    col_d, col_r, col_c = st.columns(3)
+
+    # BEBIDA DURA (Cálculo via NY)
     mud_dura = base_dura * var_arabica
     with col_d:
         st.subheader("☕ Bebida DURA")
         st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 38px;'>R$ {base_dura + mud_dura:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Base: R$ " + str(base_dura), value="", delta=float(round(mud_dura, 2)))
 
-    # BEBIDA RIO (Baseado em NY)
+    # BEBIDA RIO (Cálculo via NY)
     mud_rio = base_rio * var_arabica
     with col_r:
         st.subheader("☕ Bebida RIO")
         st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 38px;'>R$ {base_rio + mud_rio:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Base: R$ " + str(base_rio), value="", delta=float(round(mud_rio, 2)))
 
-    # CAFÉ CONILON (Baseado em LONDRES)
+    # CAFÉ CONILON (Cálculo via Londres)
     mud_conilon = base_conilon * var_conilon
     with col_c:
         st.subheader("☕ Café CONILON")
@@ -162,13 +163,10 @@ else:
         st.metric(label="Base: R$ " + str(base_conilon), value="", delta=float(round(mud_conilon, 2)))
 
 st.divider()
-with st.expander("🧐 Como o cálculo é feito agora?"):
+with st.expander("🧐 Como o cálculo é feito?"):
     st.markdown("""
-    **Agora o painel é mais preciso:**
-    - **Arábica (Dura/Rio):** Calculado usando (Variação da Bolsa de NY + Variação do Dólar).
-    - **Conilon:** Calculado usando (Variação da Bolsa de Londres + Variação do Dólar).
-    
-    Isso é necessário porque o Conilon não segue Nova York, mas sim o mercado europeu de Robustas em Londres.
+    **Cálculo:** - Para Arábica (Dura/Rio): (Variação NY + Variação Dólar) x Preço Base.
+    - Para Conilon: (Variação Londres + Variação Dólar) x Preço Base.
     """)
 
-st.caption("Atualizado via CCCV, Yahoo Finance (NY e Londres).")
+st.caption("Atualizado via CCCV e Yahoo Finance.")
