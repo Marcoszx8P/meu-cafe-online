@@ -4,7 +4,6 @@ import yfinance as yf
 import requests
 import base64
 import os
-import streamlit.components.v1 as components
 
 # Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
@@ -34,7 +33,7 @@ def add_bg_and_style(image_file):
                 font-size: 50px !important;
                 font-weight: bold;
                 margin-bottom: 20px;
-                color: #F1C40F !important;
+                color: #F1C40F !important; /* Cor dourada para o título principal */
             }}
             </style>
             """,
@@ -65,28 +64,31 @@ def buscar_mercado():
     try:
         cafe_ny = yf.download("KC=F", period="5d", interval="1d", progress=False)
         dolar = yf.download("USDBRL=X", period="5d", interval="1d", progress=False)
-
-        if isinstance(cafe_ny.columns, pd.MultiIndex):
-            cafe_ny.columns = cafe_ny.columns.get_level_values(0)
-        if isinstance(dolar.columns, pd.MultiIndex):
-            dolar.columns = dolar.columns.get_level_values(0)
-
-        df_ny = cafe_ny['Close'].dropna()
-        df_usd = dolar['Close'].dropna()
-
-        cot_ny = float(df_ny.iloc[-1])
-        prev_ny = float(df_ny.iloc[-2])
-        v_ny = (cot_ny / prev_ny) - 1
-
-        cot_usd = float(df_usd.iloc[-1])
-        prev_usd = float(df_usd.iloc[-2])
-        v_usd = (cot_usd / prev_usd) - 1
-
+        cot_ny = float(cafe_ny['Close'].iloc[-1])
+        v_ny = (cot_ny / float(cafe_ny['Close'].iloc[-2])) - 1
+        cot_usd = float(dolar['Close'].iloc[-1])
+        v_usd = (cot_usd / float(dolar['Close'].iloc[-2])) - 1
         return cot_ny, v_ny, cot_usd, v_usd
-    except Exception:
+    except:
         return 0.0, 0.0, 0.0, 0.0
 
 st.divider()
+st.markdown("### 📖 Como funciona este Painel?")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
+
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+with exp_col1:
+    st.markdown("**1. Preço Base (CCCV)**")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
+with exp_col2:
+    st.markdown("**2. Variação Combinada**")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
+with exp_col3:
+    st.markdown("**3. Alvo Estimado**")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
+
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
+st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
@@ -99,71 +101,25 @@ else:
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Dólar Comercial", f"R$ {usd_p:.4f}", f"{usd_v:.2%}")
+    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
 
     st.divider()
     col_d, col_r = st.columns(2)
 
-    preco_final_dura = base_dura * (1 + var_total)
-    mudanca_dura = preco_final_dura - base_dura
-    
+    # --- BEBIDA DURA ---
+    mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {preco_final_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
-    preco_final_rio = base_rio * (1 + var_total)
-    mudanca_rio = preco_final_rio - base_rio
-    
+    # --- BEBIDA RIO ---
+    mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {preco_final_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
-    # --- NOVO: GRÁFICO DO TRADINGVIEW ---
-    st.divider()
-    st.subheader("📊 Gráfico em Tempo Real (Bolsa NY)")
-    
-    tradingview_widget = """
-    <div class="tradingview-widget-container" style="height:500px; width:100%;">
-      <div id="tradingview_cafe" style="height:calc(100% - 32px);width:100%;"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({
-        "autosize": true,
-        "symbol": "ICEUS:KC1!",
-        "interval": "D",
-        "timezone": "America/Sao_Paulo",
-        "theme": "dark",
-        "style": "1",
-        "locale": "br",
-        "toolbar_bg": "#f1f3f6",
-        "enable_publishing": false,
-        "hide_side_toolbar": false,
-        "allow_symbol_change": true,
-        "container_id": "tradingview_cafe"
-      });
-      </script>
-    </div>
-    """
-    components.html(tradingview_widget, height=500)
-
 st.divider()
-st.markdown("### 📖 Como funciona este Painel?")
-st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
-
-exp_col1, exp_col2, exp_col3 = st.columns(3)
-with exp_col1:
-    st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV.")
-with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora a oscilação da Bolsa de Nova York e do Dólar Comercial.")
-with exp_col3:
-    st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações sobre o preço base para prever a tendência.")
-
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas.")
-st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
-st.caption("Atualizado via CCCV, Yahoo Finance e TradingView.")
+st.caption("Atualizado via CCCV e Yahoo Finance.")
