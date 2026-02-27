@@ -133,7 +133,7 @@ else:
     londres_formatado = f"{ld_p:,.0f}".replace(',', '.')
     c2.metric("Londres (Investing)", londres_formatado, f"{ld_v:.2%}") 
     
-    c3.metric("peça Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("Dolar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
     var_total_arabica = ny_v + usd_v
     var_total_conilon = ld_v + usd_v
