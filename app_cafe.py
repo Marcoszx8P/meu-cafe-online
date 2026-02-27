@@ -62,27 +62,28 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Tickers para Café NY e Dólar
-        tk_ny = yf.Ticker("KC=F")
-        tk_usd = yf.Ticker("USDBRL=X")
-        
-        # Obtendo dados em tempo real (FastInfo ou Info)
-        # Isso busca o preço atual e o fechamento anterior para calcular a variação do dia
-        dados_ny = tk_ny.history(period="2d")
-        dados_usd = tk_usd.history(period="2d")
+        # Buscamos 7 dias para garantir que pegamos os últimos dois pregões úteis
+        cafe_ny = yf.download("KC=F", period="7d", interval="1d", progress=False)
+        dolar = yf.download("USDBRL=X", period="7d", interval="1d", progress=False)
 
-        # Café NY
-        cot_ny = dados_ny['Close'].iloc[-1]
-        prev_ny = dados_ny['Close'].iloc[-2]
-        v_ny = (cot_ny / prev_ny) - 1  # Este é o -0,57% da sua imagem
+        # Seleciona apenas a coluna 'Close' e remove valores vazios
+        # O .tail(2) garante que pegamos os dois últimos dias com dados
+        df_ny = cafe_ny['Close'].dropna().tail(2)
+        df_usd = dolar['Close'].dropna().tail(2)
 
-        # Dólar
-        cot_usd = dados_usd['Close'].iloc[-1]
-        prev_usd = dados_usd['Close'].iloc[-2]
+        # Café NY: Preço atual e cálculo da variação (igual ao da foto)
+        cot_ny = float(df_ny.iloc[-1])
+        prev_ny = float(df_ny.iloc[-2])
+        v_ny = (cot_ny / prev_ny) - 1
+
+        # Dólar: Preço atual e variação
+        cot_usd = float(df_usd.iloc[-1])
+        prev_usd = float(df_usd.iloc[-2])
         v_usd = (cot_usd / prev_usd) - 1
-        
-        return float(cot_ny), float(v_ny), float(cot_usd), float(v_usd)
-    except:
+
+        return cot_ny, v_ny, cot_usd, v_usd
+    except Exception as e:
+        # Em caso de erro, retorna zero para não travar o site
         return 0.0, 0.0, 0.0, 0.0
 
 st.divider()
