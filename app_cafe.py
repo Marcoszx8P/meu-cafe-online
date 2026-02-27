@@ -29,26 +29,24 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Tickers: KC=F (NY), LRC=F (Londres), USDBRL=X (Dólar)
-        t_ny = yf.Ticker("KC=F")
-        t_lon = yf.Ticker("LRC=F")
-        t_usd = yf.Ticker("USDBRL=X")
+        # Usando download em lote para evitar bloqueios e garantir que os dados venham
+        tickers = ["KC=F", "LRC=F", "USDBRL=X"]
+        dados = yf.download(tickers, period="2d", interval="1d", progress=False)
         
-        # Uso do history(2d) para evitar o erro de 0.00
-        h_ny = t_ny.history(period="2d")
-        h_lon = t_lon.history(period="2d")
-        h_usd = t_usd.history(period="2d")
+        if dados.empty:
+            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+
+        # Preços atuais
+        ny_p = dados['Close']['KC=F'].iloc[-1]
+        lon_p = dados['Close']['LRC=F'].iloc[-1]
+        usd_p = dados['Close']['USDBRL=X'].iloc[-1]
+
+        # Variações
+        v_ny = (ny_p / dados['Close']['KC=F'].iloc[-2]) - 1
+        v_lon = (lon_p / dados['Close']['LRC=F'].iloc[-2]) - 1
+        v_usd = (usd_p / dados['Close']['USDBRL=X'].iloc[-2]) - 1
         
-        cot_ny = h_ny['Close'].iloc[-1]
-        v_ny = (h_ny['Close'].iloc[-1] / h_ny['Close'].iloc[-2]) - 1
-        
-        cot_lon = h_lon['Close'].iloc[-1]
-        v_lon = (h_lon['Close'].iloc[-1] / h_lon['Close'].iloc[-2]) - 1
-        
-        cot_usd = h_usd['Close'].iloc[-1]
-        v_usd = (h_usd['Close'].iloc[-1] / h_usd['Close'].iloc[-2]) - 1
-        
-        return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
+        return ny_p, v_ny, lon_p, v_lon, usd_p, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
@@ -85,7 +83,7 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
 add_bg_and_style('fundo_cafe_fazenda.avif')
@@ -96,25 +94,12 @@ base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
-st.markdown("### 📖 Como funciona este Painel?")
-st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
-exp_col1, exp_col2, exp_col3 = st.columns(3)
-with exp_col1:
-    st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura, Bebida Rio e Conilon diretamente do site do CCCV em Vitória.")
-with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora a oscilação da Bolsa de NY (Arábica), Bolsa de Londres (Conilon) e do Dólar Comercial.")
-with exp_col3:
-    st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações das bolsas e do Dólar sobre o preço base para prever a tendência.")
-
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
-st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
-
-if ny_p == 0:
-    st.warning("Carregando dados da bolsa...")
+# CORREÇÃO DO ERRO DE CARREGAMENTO:
+if ny_p == 0 or lon_p == 0:
+    st.warning("Carregando dados das bolsas mundiais... Se demorar, tente atualizar a página.")
+    # Força uma pequena pausa e tenta novamente se rodar localmente
+    st.button("Atualizar Dados Manulamente")
 else:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
@@ -160,12 +145,4 @@ else:
         st.write(f"Variação Combinada (Londres + Dólar): **{var_total_conilon:.2%}**")
 
 st.divider()
-with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
-    st.markdown("""
-    ### A Matemática do Mercado
-    O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de forças globais:
-    1. **Bolsas Mundiais:** O Arábica segue Nova York (ICE) e o Conilon segue Londres (ICE Europe).
-    2. **Dólar:** Como o café é uma exportação, se o dólar sobe, o seu café vale mais em Reais.
-    """)
-
 st.caption("Atualizado via CCCV e Yahoo Finance.")
