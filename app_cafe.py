@@ -10,11 +10,12 @@ import os
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
 # --- 2. FUNÇÕES DE BUSCA ---
+
+@st.cache_data(ttl=600) # Evita erros de recarregamento (removeChild)
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        # Busca Bebida Dura, Rio e Conilon no site oficial
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
@@ -29,15 +30,13 @@ def buscar_dados_cccv():
     except:
         return 1694.00, 1349.00, 1050.00 
 
+@st.cache_data(ttl=60) # Atualiza Londres a cada 1 minuto
 def buscar_londres_investing():
-    """Busca dados diretamente do Investing.com conforme solicitado"""
     url = "https://br.investing.com/commodities/london-coffee"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
     try:
         response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Captura o preço e a variação percentual
         preco_texto = soup.find("div", {"data-test": "instrument-price-last"}).text
         var_texto = soup.find("span", {"data-test": "instrument-price-change-percent"}).text
         
@@ -51,14 +50,12 @@ def buscar_mercado():
     try:
         ticker_ny = yf.Ticker("KC=F")
         ticker_usd = yf.Ticker("USDBRL=X")
-        
         cot_ny = ticker_ny.info.get('regularMarketPrice', 0.0)
         v_ny = ticker_ny.info.get('regularMarketChangePercent', 0.0) / 100
-        
         cot_usd = ticker_usd.info.get('regularMarketPrice', 0.0)
         v_usd = ticker_usd.info.get('regularMarketChangePercent', 0.0) / 100
         
-        # Londres vindo do Investing.com
+        # Londres via Investing
         cot_ld, v_ld = buscar_londres_investing()
         
         return cot_ny, v_ny, cot_ld, v_ld, cot_usd, v_usd
@@ -98,7 +95,7 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
 add_bg_and_style('fundo_cafe_fazenda.avif')
@@ -129,11 +126,11 @@ st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", uns
 if ny_p == 0:
     st.warning("Carregando dados da bolsa...")
 else:
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    # Exibição de Londres limpa, igual ao Investing.com
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pontos", f"{ny_v:.2%}")
+    # Londres exibido exatamente como no Investing
     c2.metric("Londres (Investing)", f"{ld_p:.0f}", f"{ld_v:.2%}") 
-    c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("preça Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
     var_total_arabica = ny_v + usd_v
     var_total_conilon = ld_v + usd_v
@@ -141,36 +138,32 @@ else:
     st.divider()
     col_d, col_r, col_c = st.columns(3)
 
-    # BEBIDA DURA (Base NY)
+    # BEBIDA DURA
     mudanca_dura = base_dura * var_total_arabica
     cor_dura = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
     with col_d:
-        st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_dura} !important; font-size: 35px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)))
+        st.subheader("☕ DURA")
+        st.markdown(f"## R$ {base_dura + mudanca_dura:.2f}")
+        st.caption("Alvo Estimado")
+        st.markdown(f"<span style='color:{cor_dura}'>{mudanca_dura:+.2f}</span>", unsafe_allow_html=True)
 
-    # BEBIDA RIO (Base NY)
+    # BEBIDA RIO
     mudanca_rio = base_rio * var_total_arabica
     cor_rio = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_rio} !important; font-size: 35px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)))
+        st.markdown(f"## R$ {base_rio + mudanca_rio:.2f}")
+        st.caption("Alvo Estimado")
+        st.markdown(f"<span style='color:{cor_rio}'>{mudanca_rio:+.2f}</span>", unsafe_allow_html=True)
 
-    # CONILON (Base LONDRES/INVESTING)
+    # CONILON
     mudanca_conilon = base_conilon * var_total_conilon
     cor_conilon = "#00FF00" if var_total_conilon >= 0 else "#FF4B4B"
     with col_c:
-        st.subheader("☕ CONILON Type 7")
-        st.markdown(f"<h2 style='color:{cor_conilon} !important; font-size: 35px;'>R$ {base_conilon + mudanca_conilon:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_conilon, 2)))
+        st.subheader("☕ CONILON Tipo 7")
+        st.markdown(f"## R$ {base_conilon + mudanca_conilon:.2f}")
+        st.caption("Alvo Estimado")
+        st.markdown(f"<span style='color:{cor_conilon}'>{mudanca_conilon:+.2f}</span>", unsafe_allow_html=True)
 
 st.divider()
-with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
-    st.markdown("""
-    ### A Matemática do Mercado
-    * **Arábica (Dura/Rio):** Segue a Bolsa de Nova York + Dólar.
-    * **Conilon:** Segue a Bolsa de Londres (Robusta via Investing.com) + Dólar.
-    """)
-
 st.caption("Fontes: CCCV Vitória, Investing.com (Londres) e Yahoo Finance (NY/Dólar).")
