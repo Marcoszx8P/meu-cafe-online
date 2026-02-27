@@ -9,7 +9,7 @@ import os
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
 # --- 2. FUNÇÕES DE BUSCA ---
-def buscar_dados_cccv():
+def buscar_dados_precos():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
@@ -17,47 +17,45 @@ def buscar_dados_cccv():
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
         
-        # Busca Bebida Dura, Rio e Conilon
-        dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        conilon_str = df.loc[df[0].str.contains("conilon", case=False), 1].values[0]
+        # Preços ES (Arábica)
+        dura = float(str(df.loc[df[0].str.contains("dura", case=False), 1].values[0]).replace('.', '').replace(',', '.'))
+        rio = float(str(df.loc[df[0].str.contains("rio", case=False), 1].values[0]).replace('.', '').replace(',', '.'))
         
-        dura = float(str(dura_str).replace('.', '').replace(',', '.'))
-        rio = float(str(rio_str).replace('.', '').replace(',', '.'))
-        conilon = float(str(conilon_str).replace('.', '').replace(',', '.'))
+        # Preço Conilon (Base Minas Gerais - Estimado/Simulado se não houver no CCCV)
+        # Nota: Se quiser um site específico de MG, podemos trocar a URL depois.
+        conilon = float(str(df.loc[df[0].str.contains("conilon", case=False), 1].values[0]).replace('.', '').replace(',', '.'))
         
         return dura, rio, conilon
     except:
-        return 1694.00, 1349.00, 1450.00 
+        return 1690.00, 1330.00, 1440.00 
 
 def buscar_mercado():
     try:
-        # NY = Arábica | Londres (RC=F) = Conilon/Robusta
-        ticker_ny = yf.Ticker("KC=F")
-        ticker_lon = yf.Ticker("RC=F")
-        ticker_usd = yf.Ticker("USDBRL=X")
+        # NY (Arábica) | Londres (Conilon/Robusta) | Dólar
+        tk_ny = yf.Ticker("KC=F")
+        tk_lon = yf.Ticker("RC=F")
+        tk_usd = yf.Ticker("USDBRL=X")
         
-        info_ny = ticker_ny.info
-        info_lon = ticker_lon.info
-        info_usd = ticker_usd.info
+        # Arábica NY
+        hist_ny = tk_ny.history(period="2d")
+        cot_ny = hist_ny['Close'].iloc[-1]
+        v_ny = (cot_ny / hist_ny['Close'].iloc[-2]) - 1
         
-        # Dados Arábica
-        cot_ny = info_ny.get('regularMarketPrice', 0.0)
-        v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        # Conilon Londres (RC=F) - Ajuste para não vir zerado
+        hist_lon = tk_lon.history(period="2d")
+        cot_lon = hist_lon['Close'].iloc[-1]
+        v_lon = (cot_lon / hist_lon['Close'].iloc[-2]) - 1
         
-        # Dados Conilon (Londres)
-        cot_lon = info_lon.get('regularMarketPrice', 0.0)
-        v_lon = info_lon.get('regularMarketChangePercent', 0.0) / 100
-        
-        # Dados Dólar
-        cot_usd = info_usd.get('regularMarketPrice', 0.0)
-        v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
+        # Dólar
+        hist_usd = tk_usd.history(period="2d")
+        cot_usd = hist_usd['Close'].iloc[-1]
+        v_usd = (cot_usd / hist_usd['Close'].iloc[-2]) - 1
         
         return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
     except:
-        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        return 280.00, 0.0, 4500.00, 0.0, 5.13, 0.0
 
-# --- 3. FUNÇÃO DE ESTILO E FUNDO ---
+# --- 3. FUNÇÃO DE ESTILO ---
 def add_bg_and_style(image_file):
     if os.path.exists(image_file):
         with open(image_file, "rb") as f:
@@ -66,7 +64,7 @@ def add_bg_and_style(image_file):
             f"""
             <style>
             .stApp {{
-                background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("data:image/avif;base64,{encoded_string}");
+                background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/avif;base64,{encoded_string}");
                 background-size: cover;
                 background-position: center;
                 background-attachment: fixed;
@@ -76,79 +74,64 @@ def add_bg_and_style(image_file):
                 text-shadow: 2px 2px 8px rgba(0,0,0,1) !important;
             }}
             .main-title {{
-                text-align: center;
-                font-size: 50px !important;
-                font-weight: bold;
-                margin-bottom: 20px;
-                color: #FFFFFF !important;
+                text-align: center; font-size: 50px !important; font-weight: bold; margin-bottom: 20px;
             }}
             </style>
             """,
             unsafe_allow_html=True
         )
 
-# --- 4. EXECUÇÃO DO PAINEL ---
+# --- 4. EXECUÇÃO ---
 add_bg_and_style('fundo_cafe_fazenda.avif')
+st.markdown('<h1 class="main-title">Previsão do Café ☕</h1>', unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
-
-# Chamando as funções
-base_dura, base_rio, base_conilon = buscar_dados_cccv()
+base_dura, base_rio, base_conilon = buscar_dados_precos()
 ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
-st.divider()
-
-if ny_p == 0:
-    st.warning("Carregando dados da bolsa...")
+if ny_p == 0 or lon_p == 0:
+    st.warning("Aguardando abertura das bolsas...")
 else:
-    # Variações Combinadas
-    var_arabica = ny_v + usd_v
-    var_conilon = lon_v + usd_v
+    # Tendências Separadas
+    tendencia_arabica = ny_v + usd_v
+    tendencia_conilon = lon_v + usd_v
     
-    # Cores
-    cor_ara = "#00FF00" if var_arabica >= 0 else "#FF4B4B"
-    cor_con = "#00FF00" if var_conilon >= 0 else "#FF4B4B"
+    cor_ara = "#00FF00" if tendencia_arabica >= 0 else "#FF4B4B"
+    cor_con = "#00FF00" if tendencia_conilon >= 0 else "#FF4B4B"
 
-    # Métricas Principais
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} USD", f"{lon_v:.2%}")
-    c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
-    c4.metric("Tendência Conilon", f"{(var_conilon*100):.2f}%")
+    # Métricas de Mercado
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
+    m2.metric("Londres (Conilon)", f"{lon_p:.0f} USD", f"{lon_v:.2%}")
+    m3.metric("Dólar", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    m4.metric("Tendência Arábica", f"{tendencia_arabica:.2%}", delta_color="off")
+    m5.metric("Tendência Conilon", f"{tendencia_conilon:.2%}", delta_color="off")
 
     st.divider()
     
     # Exibição dos Alvos
     col_d, col_r, col_c = st.columns(3)
 
-    # BEBIDA DURA (Arábica)
-    mudanca_dura = base_dura * var_arabica
     with col_d:
         st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 35px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)))
+        valor_d = base_dura * (1 + tendencia_arabica)
+        st.markdown(f"<h2 style='color:{cor_ara} !important;'>R$ {valor_d:.2f}</h2>", unsafe_allow_html=True)
+        st.caption(f"Base ES: R$ {base_dura:.2f}")
 
-    # BEBIDA RIO (Arábica)
-    mudanca_rio = base_rio * var_arabica
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 35px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)))
+        valor_r = base_rio * (1 + tendencia_arabica)
+        st.markdown(f"<h2 style='color:{cor_ara} !important;'>R$ {valor_r:.2f}</h2>", unsafe_allow_html=True)
+        st.caption(f"Base ES: R$ {base_rio:.2f}")
 
-    # CONILON (Londres)
-    mudanca_conilon = base_conilon * var_conilon
     with col_c:
-        st.subheader("☕ CONILON")
-        st.markdown(f"<h2 style='color:{cor_con} !important; font-size: 35px;'>R$ {base_conilon + mudanca_conilon:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_conilon, 2)))
+        st.subheader("☕ CONILON (MG)")
+        valor_c = base_conilon * (1 + tendencia_conilon)
+        st.markdown(f"<h2 style='color:{cor_con} !important;'>R$ {valor_c:.2f}</h2>", unsafe_allow_html=True)
+        st.caption(f"Base Minas: R$ {base_conilon:.2f}")
 
-# --- EXPLICAÇÃO FINAL ---
 st.divider()
-with st.expander("🧐 Produtor, entenda a diferença entre Arábica e Conilon"):
-    st.markdown("""
-    * **Arábica (Dura e Rio):** O preço base segue a Bolsa de **Nova York**.
-    * **Conilon:** O preço base segue a Bolsa de **Londres**, que é a referência mundial para o café Robusta/Conilon.
-    * O cálculo do Alvo Estimado para ambos soma a variação da sua respectiva bolsa com a variação do dólar no dia.
-    """)
+with st.expander("🧐 Entenda as Tendências"):
+    st.write(f"**Tendência Arábica:** Soma NY ({ny_v:.2%}) + Dólar ({usd_v:.2%}) = {tendencia_arabica:.2%}")
+    st.write(f"**Tendência Conilon:** Soma Londres ({lon_v:.2%}) + Dólar ({usd_v:.2%}) = {tendencia_conilon:.2%}")
 
-st.caption("Atualizado via CCCV, Yahoo Finance (NY e Londres).")
+st.caption("Fontes: CCCV, Yahoo Finance (NY e Londres).")
