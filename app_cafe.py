@@ -18,7 +18,6 @@ def buscar_dados_cccv():
         df = tabelas[0]
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        # ADICIONADO CONILON:
         conilon_str = df.loc[df[0].str.contains("conilon", case=False), 1].values[0]
         
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
@@ -31,23 +30,23 @@ def buscar_dados_cccv():
 def buscar_mercado():
     try:
         ticker_ny = yf.Ticker("KC=F")
-        # ADICIONADO LONDRES (ROBUSTA/CONILON):
-        ticker_lon = yf.Ticker("RC=F") 
+        # CORREÇÃO: Ticker LRC=F é mais estável para Londres (Robusta)
+        ticker_lon = yf.Ticker("LRC=F") 
         ticker_usd = yf.Ticker("USDBRL=X")
         
-        info_ny = ticker_ny.info
-        info_lon = ticker_lon.info
-        info_usd = ticker_usd.info
+        # Coleta de dados com fallback para garantir que não venha 0.0
+        hist_ny = ticker_ny.history(period="2d")
+        hist_lon = ticker_lon.history(period="2d")
+        hist_usd = ticker_usd.history(period="2d")
         
-        cot_ny = info_ny.get('regularMarketPrice', 0.0)
-        v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        cot_ny = hist_ny['Close'].iloc[-1]
+        v_ny = (hist_ny['Close'].iloc[-1] / hist_ny['Close'].iloc[-2]) - 1
         
-        # DADOS LONDRES:
-        cot_lon = info_lon.get('regularMarketPrice', 0.0)
-        v_lon = info_lon.get('regularMarketChangePercent', 0.0) / 100
+        cot_lon = hist_lon['Close'].iloc[-1]
+        v_lon = (hist_lon['Close'].iloc[-1] / hist_lon['Close'].iloc[-2]) - 1
         
-        cot_usd = info_usd.get('regularMarketPrice', 0.0)
-        v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
+        cot_usd = hist_usd['Close'].iloc[-1]
+        v_usd = (hist_usd['Close'].iloc[-1] / hist_usd['Close'].iloc[-2]) - 1
         
         return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
     except:
@@ -67,7 +66,6 @@ def add_bg_and_style(image_file):
                 background-position: center;
                 background-attachment: fixed;
             }}
-            /* TEXTOS EM BRANCO PURO COM SOMBRA */
             h1, h2, h3, p, span, label, div {{
                 color: #FFFFFF !important;
                 text-shadow: 2px 2px 8px rgba(0,0,0,1) !important;
@@ -94,7 +92,6 @@ add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-# Chamando as funções (AGORA COM LONDRES E CONILON)
 base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
@@ -119,7 +116,6 @@ st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", uns
 if ny_p == 0:
     st.warning("Carregando dados da bolsa...")
 else:
-    # MÉTRICAS DO MERCADO
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
     c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
@@ -132,19 +128,16 @@ else:
 
     st.divider()
     
-    # --- SEÇÃO ARÁBICA ---
     st.markdown("### 🌿 Café Arábica")
     col_d, col_r = st.columns(2)
     cor_tendencia_a = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
 
-    # BEBIDA DURA
     mudanca_dura = base_dura * var_total_arabica
     with col_d:
         st.subheader("☕ Bebida DURA")
         st.markdown(f"<h2 style='color:{cor_tendencia_a} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
-    # BEBIDA RIO
     mudanca_rio = base_rio * var_total_arabica
     with col_r:
         st.subheader("☕ Bebida RIO")
@@ -153,7 +146,6 @@ else:
 
     st.divider()
 
-    # --- SEÇÃO CONILON ---
     st.markdown("### 🍂 Café Conilon")
     col_c, col_info_c = st.columns(2)
     cor_tendencia_c = "#00FF00" if var_total_conilon >= 0 else "#FF4B4B"
@@ -172,12 +164,8 @@ with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses
     st.markdown("""
     ### A Matemática do Mercado
     O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de forças globais:
-    
-    1. **Bolsas Mundiais:** O Arábica segue **Nova York (ICE)** e o Conilon segue **Londres (ICE Europe)**.
+    1. **Bolsas Mundiais:** O Arábica segue Nova York (ICE) e o Conilon segue Londres (ICE Europe).
     2. **Dólar:** Como o café é uma exportação, se o dólar sobe, o seu café vale mais em Reais.
-    
-    **Como o cálculo é feito?**
-    Somamos a variação da bolsa correspondente com a variação do dólar e aplicamos sobre o preço base do **CCCV**.
     """)
 
 st.caption("Atualizado via CCCV e Yahoo Finance.")
