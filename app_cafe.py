@@ -71,4 +71,69 @@ def buscar_mercado():
         dolar = dolar.dropna()
 
         cot_ny = float(cafe_ny.iloc[-1])
-        v_ny = (cot_ny / float(
+        v_ny = (cot_ny / float(cafe_ny.iloc[-2])) - 1
+        
+        cot_usd = float(dolar.iloc[-1])
+        v_usd = (cot_usd / float(dolar.iloc[-2])) - 1
+        
+        return cot_ny, v_ny, cot_usd, v_usd
+    except:
+        return 0.0, 0.0, 0.0, 0.0
+
+st.divider()
+st.markdown("### 📖 Como funciona este Painel?")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
+
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+with exp_col1:
+    st.markdown("**1. Preço Base (CCCV)**")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
+with exp_col2:
+    st.markdown("**2. Variação Combinada**")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
+with exp_col3:
+    st.markdown("**3. Alvo Estimado**")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
+
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
+st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
+
+base_dura, base_rio = buscar_dados_cccv()
+ny_p, ny_v, usd_p, usd_v = buscar_mercado()
+
+if ny_p == 0:
+    st.warning("Carregando dados da bolsa...")
+else:
+    # Correção da variação total e cor
+    var_total = ny_v + usd_v
+    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF0000"
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
+    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
+
+    st.divider()
+    col_d, col_r = st.columns(2)
+
+    # --- BEBIDA DURA ---
+    # Aplica a porcentagem sobre o valor base
+    preco_final_dura = base_dura * (1 + var_total)
+    mudanca_dura = preco_final_dura - base_dura
+    
+    with col_d:
+        st.subheader("☕ Bebida DURA")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {preco_final_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
+
+    # --- BEBIDA RIO ---
+    preco_final_rio = base_rio * (1 + var_total)
+    mudanca_rio = preco_final_rio - base_rio
+    
+    with col_r:
+        st.subheader("☕ Bebida RIO")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {preco_final_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
+
+st.divider()
+st.caption("Atualizado via CCCV e Yahoo Finance.")
