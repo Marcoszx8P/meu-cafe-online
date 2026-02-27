@@ -17,40 +17,46 @@ def buscar_dados_cccv():
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
         
-        # O CCCV costuma organizar: [0] Descrição, [1] Dura, [2] Rio, [3] Conilon
-        # Vamos buscar por palavras-chave para evitar erro de coluna
+        # Busca Bebida Dura
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        
-        # O Conilon geralmente fica na última linha/coluna de preços
-        # Tentamos buscar o valor na linha que contém '7/8' ou na coluna 3
-        try:
-            conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
-        except:
-            conilon_str = df.iloc[-1, 1] # Pega o último valor da tabela se falhar
-
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
+        
+        # Busca Bebida Rio
+        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
+        
+        # Busca Conilon (Tipo 7/8)
+        conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
         conilon = float(str(conilon_str).replace('.', '').replace(',', '.'))
         
         return dura, rio, conilon
     except:
-        # Fallback com valores de mercado atuais caso o site mude a estrutura
-        return 1696.00, 1349.00, 972.00 
+        return 1694.00, 1349.00, 1100.00 
 
 def buscar_mercado():
     try:
-        ticker_ny = yf.Ticker("KC=F")
-        ticker_usd = yf.Ticker("USDBRL=X")
+        ticker_ny = yf.Ticker("KC=F") # Arábica NY
+        ticker_lon = yf.Ticker("RC=F") # Robusta Londres
+        ticker_usd = yf.Ticker("USDBRL=X") # Dólar
+        
+        # Dados NY
         info_ny = ticker_ny.info
-        info_usd = ticker_usd.info
         cot_ny = info_ny.get('regularMarketPrice', 0.0)
         v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        
+        # Dados Londres
+        info_lon = ticker_lon.info
+        cot_lon = info_lon.get('regularMarketPrice', 0.0)
+        v_lon = info_lon.get('regularMarketChangePercent', 0.0) / 100
+        
+        # Dados Dólar
+        info_usd = ticker_usd.info
         cot_usd = info_usd.get('regularMarketPrice', 0.0)
         v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
-        return cot_ny, v_ny, cot_usd, v_usd
+        
+        return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
     except:
-        return 0.0, 0.0, 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
 # --- 3. FUNÇÃO DE ESTILO E FUNDO ---
 def add_bg_and_style(image_file):
@@ -92,67 +98,82 @@ add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
+# Chamando as funções
 base_dura, base_rio, base_conilon = buscar_dados_cccv()
-ny_p, ny_v, usd_p, usd_v = buscar_mercado()
+ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 st.markdown("### 📖 Como funciona este Painel?")
-st.write("Simulação do impacto do mercado global no preço físico do café no ES.")
+st.write("Este site simula o impacto das bolsas mundiais e do dólar no preço do café no Espírito Santo.")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Cotações oficiais de Bebida Dura, Rio e Conilon (Tipo 7/8) de Vitória.")
+    st.write("Cotações oficiais de Bebida Dura, Rio e Conilon diretamente do site do CCCV em Vitória.")
 with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramento de NY (Arábica) e Dólar em tempo real.")
+    st.markdown("**2. Diferencial de Bolsas**")
+    st.write("O Arábica segue a Bolsa de **NY**, enquanto o Conilon segue a Bolsa de **Londres**.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicação da oscilação financeira sobre o preço real de hoje.")
+    st.write("Somamos a variação da respectiva Bolsa + a variação do Dólar sobre o preço físico de hoje.")
 
-st.info("⚠️ **Aviso:** Valores estimativos para auxílio à decisão.")
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 if ny_p == 0:
-    st.warning("Carregando dados da bolsa...")
+    st.warning("Carregando dados das bolsas...")
 else:
-    var_total = ny_v + usd_v
-    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF4B4B"
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
-    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
+    # Indicadores de Mercado
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f}", f"{ny_v:.2%}")
+    m2.metric("Bolsa Londres (Robusta)", f"{lon_p:.2f}", f"{lon_v:.2%}")
+    m3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    
+    # Tendência média para exibição rápida
+    var_media = (ny_v + lon_v + usd_v) / 3
+    m4.metric("Tendência Geral", f"{(var_media*100):.2f}%")
 
     st.divider()
+    
+    # Criando 3 colunas para os tipos de café
     col_d, col_r, col_c = st.columns(3)
 
-    # BEBIDA DURA
-    mud_dura = base_dura * var_total
+    # Variações específicas
+    var_arabica = ny_v + usd_v
+    var_conilon = lon_v + usd_v
+    
+    cor_ara = "#00FF00" if var_arabica >= 0 else "#FF4B4B"
+    cor_con = "#00FF00" if var_conilon >= 0 else "#FF4B4B"
+
+    # BEBIDA DURA (Segue NY)
+    mudanca_dura = base_dura * var_arabica
     with col_d:
         st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 38px;'>R$ {base_dura + mud_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_dura), value="", delta=float(round(mud_dura, 2)))
+        st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 35px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado (NY+USD)", value="", delta=float(round(mudanca_dura, 2)))
 
-    # BEBIDA RIO
-    mud_rio = base_rio * var_total
+    # BEBIDA RIO (Segue NY)
+    mudanca_rio = base_rio * var_arabica
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 38px;'>R$ {base_rio + mud_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_rio), value="", delta=float(round(mud_rio, 2)))
+        st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 35px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado (NY+USD)", value="", delta=float(round(mudanca_rio, 2)))
 
-    # CAFÉ CONILON
-    mud_conilon = base_conilon * var_total
+    # CAFÉ CONILON (Segue Londres)
+    mudanca_conilon = base_conilon * var_conilon
     with col_c:
         st.subheader("☕ Café CONILON")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 38px;'>R$ {base_conilon + mud_conilon:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_conilon), value="", delta=float(round(mud_conilon, 2)))
+        st.markdown(f"<h2 style='color:{cor_con} !important; font-size: 35px;'>R$ {base_conilon + mudanca_conilon:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado (LON+USD)", value="", delta=float(round(mudanca_conilon, 2)))
 
 st.divider()
-with st.expander("🧐 Como o cálculo é feito?"):
+with st.expander("🧐 Por que o Conilon usa uma Bolsa diferente?"):
     st.markdown("""
-    **Cálculo:** (Variação NY + Variação Dólar) x Preço Base CCCV.
-    O "Base" que você vê abaixo do preço é o valor oficial retirado hoje do site do CCCV para o tipo 7/8.
+    O mercado mundial de café é dividido em dois grandes grupos:
+    * **Arábica (Bebida Dura/Rio):** O preço é definido na Bolsa de Nova York (ICE).
+    * **Robusta/Conilon:** O preço mundial de referência é definido na Bolsa de Londres. 
+    
+    Como o Espírito Santo é o maior produtor de Conilon do Brasil, este painel agora separa os cálculos para que a sua previsão seja muito mais próxima da realidade do que está acontecendo no mundo.
     """)
 
 st.caption("Atualizado via CCCV e Yahoo Finance.")
