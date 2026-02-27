@@ -8,37 +8,35 @@ import os
 # Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
-# --- FUNÇÃO PARA INJETAR A IMAGEM DE FUNDO ---
+# --- FUNÇÃO PARA IMAGEM DE FUNDO ---
 def add_bg_from_local(image_file):
     if os.path.exists(image_file):
-        with open(image_file, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read())
+        with open(image_file, "rb") as f:
+            encoded_string = base64.b64encode(f.read()).decode()
         st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url("data:image/jpg;base64,{encoded_string.decode()}");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }}
-        /* Estilização para garantir leitura no GitHub/Cloud */
-        h1, h2, h3, p, span, .stMetric, label, .stMarkdown {{
-            color: white !important;
-        }}
-        .stMetric {{
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
+            f"""
+            <style>
+            .stApp {{
+                background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url("data:image/jpg;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
+            }}
+            /* Ajuste global de cores para contraste */
+            h1, h2, h3, p, span, label, .stMetric {{
+                color: white !important;
+            }}
+            .stMarkdown {{
+                background: rgba(0, 0, 0, 0.2);
+                padding: 10px;
+                border-radius: 10px;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
         )
-    else:
-        st.error(f"Erro: O arquivo '{image_file}' não foi encontrado no repositório do GitHub.")
 
-# Tenta carregar a imagem
+# Tenta carregar a imagem de fundo
 add_bg_from_local('historia_do_cafe-968x660-1-968x560.jpg')
 
 def buscar_dados_cccv():
@@ -74,28 +72,24 @@ def buscar_mercado():
 st.divider()
 
 st.markdown("### 📖 Como funciona este Monitor?")
-st.write("""
-Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo. 
-A lógica funciona em três etapas principais:
-""")
+st.write("Este site simula o impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
+    st.write("Cotações oficiais de Bebida Dura e Rio do CCCV em Vitória.")
 
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
+    st.write("Monitoramento em tempo real da Bolsa de NY (Arábica) e do Dólar.")
 
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
+    st.write("Tendência baseada na oscilação conjunta de mercado.")
 
-st.info("⚠️ **Aviso de Versão Beta:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
+st.info("⚠️ **Aviso:** Valores estimados para auxílio em tomada de decisão.")
 
-st.markdown("<br><br>", unsafe_allow_html=True) 
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 base_dura, base_rio = buscar_dados_cccv()
@@ -114,19 +108,25 @@ else:
     st.divider()
     col_d, col_r = st.columns(2)
 
+    # Bebida Dura
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
         st.metric(
             label="Alvo Estimado", 
             value=f"R$ {base_dura + mudanca_dura:.2f}", 
-            delta=float(round(mudanca_dura, 2)),
-            delta_color="normal"
+            delta=float(round(mudanca_dura, 2))
         )
 
+    # Bebida Rio
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
         st.metric(
             label="Alvo Estimado", 
-            value=
+            value=f"R$ {base_rio + mudanca_rio:.2f}", 
+            delta=float(round(mudanca_rio, 2))
+        )
+
+st.divider()
+st.caption("Atualizado via CCCV e Yahoo Finance.")
