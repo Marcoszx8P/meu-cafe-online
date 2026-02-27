@@ -17,17 +17,12 @@ def buscar_dados_cccv():
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
         
-        # O CCCV costuma organizar: [0] Descrição, [1] Dura, [2] Rio, [3] Conilon
-        # Vamos buscar por palavras-chave para evitar erro de coluna
+        # Captura Arábica Dura
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
+        # Captura Arábica Rio
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        
-        # O Conilon geralmente fica na última linha/coluna de preços
-        # Tentamos buscar o valor na linha que contém '7/8' ou na coluna 3
-        try:
-            conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
-        except:
-            conilon_str = df.iloc[-1, 1] # Pega o último valor da tabela se falhar
+        # Captura Conilon Tipo 7/8
+        conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
 
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
@@ -35,8 +30,7 @@ def buscar_dados_cccv():
         
         return dura, rio, conilon
     except:
-        # Fallback com valores de mercado atuais caso o site mude a estrutura
-        return 1696.00, 1349.00, 972.00 
+        return 1694.00, 1349.00, 1100.00 # Valores padrão caso falhe a conexão
 
 def buscar_mercado():
     try:
@@ -92,25 +86,26 @@ add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
+# Chamando as funções
 base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 st.markdown("### 📖 Como funciona este Painel?")
-st.write("Simulação do impacto do mercado global no preço físico do café no ES.")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Cotações oficiais de Bebida Dura, Rio e Conilon (Tipo 7/8) de Vitória.")
+    st.write("Buscamos as cotações oficiais de Bebida Dura, Bebida Rio e Conilon (7/8) diretamente do site do CCCV em Vitória.")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramento de NY (Arábica) e Dólar em tempo real.")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicação da oscilação financeira sobre o preço real de hoje.")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso:** Valores estimativos para auxílio à decisão.")
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 if ny_p == 0:
@@ -125,34 +120,40 @@ else:
     c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
 
     st.divider()
+    # Adicionando 3 colunas para incluir o Conilon
     col_d, col_r, col_c = st.columns(3)
 
     # BEBIDA DURA
-    mud_dura = base_dura * var_total
+    mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 38px;'>R$ {base_dura + mud_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_dura), value="", delta=float(round(mud_dura, 2)))
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 35px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)))
 
     # BEBIDA RIO
-    mud_rio = base_rio * var_total
+    mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 38px;'>R$ {base_rio + mud_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_rio), value="", delta=float(round(mud_rio, 2)))
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 35px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)))
 
-    # CAFÉ CONILON
-    mud_conilon = base_conilon * var_total
+    # CAFÉ CONILON (TIPO 7/8)
+    mudanca_conilon = base_conilon * var_total
     with col_c:
         st.subheader("☕ Café CONILON")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 38px;'>R$ {base_conilon + mud_conilon:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_conilon), value="", delta=float(round(mud_conilon, 2)))
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 35px;'>R$ {base_conilon + mudanca_conilon:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado (7/8)", value="", delta=float(round(mudanca_conilon, 2)))
 
 st.divider()
-with st.expander("🧐 Como o cálculo é feito?"):
+with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
     st.markdown("""
-    **Cálculo:** (Variação NY + Variação Dólar) x Preço Base CCCV.
-    O "Base" que você vê abaixo do preço é o valor oficial retirado hoje do site do CCCV para o tipo 7/8.
+    ### A Matemática do Mercado
+    O preço do café no Espírito Santo reflete duas forças globais principais:
+    
+    1. **Bolsa de Nova York (ICE):** Referência mundial de preço.
+    2. **Dólar:** Define a conversão para nossa moeda.
+    
+    **Resultado:** Pegamos o preço oficial de hoje do **CCCV (Vitória)** e aplicamos essa porcentagem combinada. O "Alvo Estimado" mostra qual seria o preço justo caso a cooperativa seguisse exatamente a movimentação do mercado agora.
     """)
 
 st.caption("Atualizado via CCCV e Yahoo Finance.")
