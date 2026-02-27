@@ -5,81 +5,104 @@ import requests
 import base64
 import os
 
-# 1. CONFIGURAÇÃO DA PÁGINA
-st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
-
-# 2. FUNÇÕES DE BUSCA (Definir antes de usar)
+# 1. Primeiro as funções (Definição)
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
+        # Tenta pegar os dados reais
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
-        # Pegando os valores
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
         return dura, rio
-    except Exception as e:
-        # Valores de fallback caso o site do CCCV esteja fora do ar
+    except:
+        # Fallback se o site falhar
         return 1694.00, 1349.00 
 
 def buscar_mercado():
     try:
-        # Pegando dados diretos via Ticker para evitar cálculos manuais
-        tk_ny = yf.Ticker("KC=F")
-        tk_usd = yf.Ticker("USDBRL=X")
+        ticker_ny = yf.Ticker("KC=F")
+        ticker_usd = yf.Ticker("USDBRL=X")
         
-        # .info traz a numeração que o Yahoo já calculou
-        info_ny = tk_ny.info
-        info_usd = tk_usd.info
+        # Pega os dados prontos do Yahoo
+        info_ny = ticker_ny.info
+        info_usd = ticker_usd.info
         
-        # Preço Atual
         cot_ny = info_ny.get('regularMarketPrice', 0.0)
-        cot_usd = info_usd.get('regularMarketPrice', 0.0)
-        
-        # PEGANDO A PORCENTAGEM DIRETA DO YAHOO (ex: -0.80)
-        # Dividimos por 100 para o Streamlit entender como decimal de porcentagem
+        # Pega a porcentagem exata que você viu na tela (-0.80)
         v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
         v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
         
         return cot_ny, v_ny, cot_usd, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0
 
-# 3. ESTILIZAÇÃO
 def add_bg_and_style(image_file):
     if os.path.exists(image_file):
         with open(image_file, "rb") as f:
             encoded_string = base64.b64encode(f.read()).decode()
-        st.markdown(f"""
+        st.markdown(
+            f"""
             <style>
             .stApp {{
                 background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/jpg;base64,{encoded_string}");
-                background-size: cover; background-position: center; background-attachment: fixed;
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
             }}
-            h1, h2, h3, p, span, label, div {{ color: white !important; text-shadow: 2px 2px 4px rgba(0,0,0,1) !important; }}
-            .main-title {{ text-align: center; font-size: 50px !important; font-weight: bold; margin-bottom: 20px; color: #F1C40F !important; }}
+            h1, h2, h3, p, span, label, div {{
+                color: white !important;
+                text-shadow: 2px 2px 4px rgba(0,0,0,1) !important;
+            }}
+            .main-title {{
+                text-align: center;
+                font-size: 50px !important;
+                font-weight: bold;
+                margin-bottom: 20px;
+                color: #F1C40F !important;
+            }}
             </style>
-            """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True
+        )
 
+# 2. Configuração e Estilo
+st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 
-# 4. EXECUÇÃO DO PAINEL
-st.markdown('<h1 class="main-title">Previsão do Café ☕</h1>', unsafe_allow_html=True)
+# 3. Título e Conteúdo
+st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-# Chamada das funções
+# AQUI O ERRO FOI CORRIGIDO: Chamando as funções depois de criadas
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 st.markdown("### 📖 Como funciona este Painel?")
-# ... (seu texto explicativo aqui) ...
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
+
+exp_col1, exp_col2, exp_col3 = st.columns(3)
+with exp_col1:
+    st.markdown("**1. Preço Base (CCCV)**")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
+with exp_col2:
+    st.markdown("**2. Variação Combinada**")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
+with exp_col3:
+    st.markdown("**3. Alvo Estimado**")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
+
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas.")
+st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 if ny_p == 0:
-    st.warning("Aguardando conexão com Yahoo Finance...")
+    st.warning("Carregando dados da bolsa...")
 else:
     var_total = ny_v + usd_v
     cor_tendencia = "#00FF00" if var_total >= 0 else "#FF0000"
@@ -92,18 +115,19 @@ else:
     st.divider()
     col_d, col_r = st.columns(2)
 
-    # BEBIDA DURA
+    # --- BEBIDA DURA ---
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
         st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=f"R$ {mudanca_dura:.2f}")
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
-    # BEBIDA RIO
+    # --- BEBIDA RIO ---
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
         st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=f"R$ {mudanca_rio:.2f}")
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
-st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
+st.divider()
+st.caption("Atualizado via CCCV e Yahoo Finance.")
