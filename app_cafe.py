@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import requests
-from datetime import datetime
 
 # 1. Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
@@ -21,19 +20,20 @@ def buscar_dados_cccv():
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
         return dura, rio
     except:
-        return 1694.00, 1349.00 # Valores de segurança (fechamento anterior)
+        return 1694.00, 1349.00
 
 def buscar_mercado_completo():
     try:
-        # Baixa histórico de 7 dias para a tabela
-        cafe_hist = yf.download("KC=F", period="7d", interval="1d", progress=False)
-        dolar_hist = yf.download("USDBRL=X", period="7d", interval="1d", progress=False)
+        # Baixa histórico de 10 dias para garantir que teremos dados suficientes
+        cafe_hist = yf.download("KC=F", period="10d", interval="1d", progress=False)['Close']
+        dolar_hist = yf.download("USDBRL=X", period="10d", interval="1d", progress=False)['Close']
         
-        # Dados atuais para os cards superiores
-        cot_ny = float(cafe_hist['Close'].iloc[-1])
-        v_ny = (cot_ny / float(cafe_hist['Close'].iloc[-2])) - 1
-        cot_usd = float(dolar_hist['Close'].iloc[-1])
-        v_usd = (cot_usd / float(dolar_hist['Close'].iloc[-2])) - 1
+        # Dados atuais para os cards (últimos dois dias úteis)
+        cot_ny = float(cafe_hist.iloc[-1])
+        v_ny = (cot_ny / float(cafe_hist.iloc[-2])) - 1
+        
+        cot_usd = float(dolar_hist.iloc[-1])
+        v_usd = (cot_usd / float(dolar_hist.iloc[-2])) - 1
         
         return cot_ny, v_ny, cot_usd, v_usd, cafe_hist, dolar_hist
     except:
@@ -57,7 +57,7 @@ with exp_col3:
     st.write("Tendência baseada na oscilação internacional.")
 
 st.info("""🕒 **Nota sobre o fechamento:** O CCCV publica os valores exatos entre 16:00 e 17:00. 
-Antes disso, o cálculo usa o fechamento do dia anterior como base.""")
+Antes disso, o cálculo utiliza o fechamento do dia anterior como base.""")
 
 st.divider()
 
@@ -70,7 +70,6 @@ if ny_p == 0:
 else:
     var_total = ny_v + usd_v
     
-    # Cards de Indicadores
     c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}", delta_color="normal")
     c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}", delta_color="normal")
@@ -79,35 +78,30 @@ else:
     st.divider()
     col_d, col_r = st.columns(2)
 
-    # Cálculo Bebida DURA
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
         st.metric(label="Alvo Estimado", value=f"R$ {base_dura + mudanca_dura:.2f}", 
                   delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
-    # Cálculo Bebida RIO
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
         st.metric(label="Alvo Estimado", value=f"R$ {base_rio + mudanca_rio:.2f}", 
                   delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
-    # --- HISTÓRICO DE FECHAMENTO ---
+    # --- HISTÓRICO DE FECHAMENTO (CORRIGIDO) ---
     st.divider()
     st.subheader("📅 Histórico de Fechamento (Últimos Dias)")
     
-    if hist_ny is not None:
-        # Prepara os dados para a tabela
-        df_hist = hist_ny[['Close']].copy()
-        df_hist.columns = ['Bolsa NY (pts)']
-        df_hist['Dólar (R$)'] = hist_usd['Close'].values
+    if hist_ny is not None and hist_usd is not None:
+        # Criando o DataFrame alinhando as datas corretamente
+        df_final = pd.merge(hist_ny, hist_usd, left_index=True, right_index=True, how='inner')
+        df_final.columns = ['Bolsa NY (pts)', 'Dólar (R$)']
         
-        # Formata a data para o padrão brasileiro e organiza a tabela
-        df_hist.index = df_hist.index.strftime('%d/%m/%Y')
-        df_hist_display = df_hist.sort_index(ascending=False)
-        
-        st.dataframe(df_hist_display.style.format("{:.2f}"), use_container_width=True)
+        # Formata data e organiza
+        df_final.index = df_final.index.strftime('%d/%m/%Y')
+        st.dataframe(df_final.sort_index(ascending=False).style.format("{:.2f}"), use_container_width=True)
 
 # --- RODAPÉ ---
 st.warning("⚠️ **Versão Beta:** Estimativas matemáticas para auxílio na tomada de decisão.")
