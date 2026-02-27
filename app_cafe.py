@@ -73,7 +73,7 @@ def buscar_mercado():
         return 0.0, 0.0, 0.0, 0.0
 
 st.divider()
-st.markdown("### 📖 Como funciona este Monitor?")
+st.markdown("### 📖 Como funciona este Painel?")
 st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
