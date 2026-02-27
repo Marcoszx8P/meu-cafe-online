@@ -79,15 +79,15 @@ st.write("Este site realiza uma simulação do impacto do mercado financeiro glo
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais diretamente do site do CCCV.")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramos a oscilação da Bolsa de Nova York e do Dólar Comercial.")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Prevemos a tendência do mercado físico baseada na soma das variações.")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso:** Os valores são estimativas matemáticas para auxílio na tomada de decisão.")
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 base_dura, base_rio = buscar_dados_cccv()
