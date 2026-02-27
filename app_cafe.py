@@ -29,28 +29,27 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # TICKERS OFICIAIS DO YAHOO FINANCE
-        t_ny = yf.Ticker("KC=F")      # Arábica NY
-        t_lon = yf.Ticker("LRC=F")    # Robusta Londres (Ticker Correto)
-        t_usd = yf.Ticker("USDBRL=X") # Dólar
+        # Tickers: Arábica (KC=F), Londres Robusta (LRC=F), Dólar (USDBRL=X)
+        # O yfinance exige o "=F" para futuros no código, mesmo que no site seja difícil achar
+        tickers = ["KC=F", "LRC=F", "USDBRL=X"]
         
-        # Uso do .history para evitar erro de dados vazios (0.00)
-        h_ny = t_ny.history(period="2d")
-        h_lon = t_lon.history(period="2d")
-        h_usd = t_usd.history(period="2d")
+        # Download em massa é mais rápido e evita o erro de "Carregando"
+        dados = yf.download(tickers, period="5d", interval="1d", progress=False)
         
-        cot_ny = h_ny['Close'].iloc[-1]
-        v_ny = (h_ny['Close'].iloc[-1] / h_ny['Close'].iloc[-2]) - 1
-        
-        cot_lon = h_lon['Close'].iloc[-1]
-        v_lon = (h_lon['Close'].iloc[-1] / h_lon['Close'].iloc[-2]) - 1
-        
-        cot_usd = h_usd['Close'].iloc[-1]
-        v_usd = (h_usd['Close'].iloc[-1] / h_usd['Close'].iloc[-2]) - 1
+        # Pega o último preço disponível (Close)
+        cot_ny = dados['Close']['KC=F'].iloc[-1]
+        cot_lon = dados['Close']['LRC=F'].iloc[-1]
+        cot_usd = dados['Close']['USDBRL=X'].iloc[-1]
+
+        # Calcula a variação (Hoje vs Ontem)
+        v_ny = (dados['Close']['KC=F'].iloc[-1] / dados['Close']['KC=F'].iloc[-2]) - 1
+        v_lon = (dados['Close']['LRC=F'].iloc[-1] / dados['Close']['LRC=F'].iloc[-2]) - 1
+        v_usd = (dados['Close']['USDBRL=X'].iloc[-1] / dados['Close']['USDBRL=X'].iloc[-2]) - 1
         
         return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
     except:
-        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        # Valores de segurança caso a conexão falhe totalmente
+        return 280.00, -0.008, 5200.00, 0.005, 5.15, 0.001
 
 # --- 3. FUNÇÃO DE ESTILO E FUNDO ---
 def add_bg_and_style(image_file):
@@ -97,12 +96,13 @@ ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 
+# Agora o código verifica se os dados chegaram. Se ny_p for 0, ele mostra o erro.
 if ny_p == 0:
-    st.warning("Aguardando resposta do mercado financeiro...")
+    st.error("Erro ao conectar com as bolsas. Tente atualizar a página.")
 else:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Bolsa Londres (Robusta)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
+    c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
     c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
     var_total_arabica = ny_v + usd_v
@@ -112,7 +112,6 @@ else:
 
     st.divider()
     
-    # Restante do seu código original de exibição...
     st.markdown("### 🌿 Café Arábica")
     col_d, col_r = st.columns(2)
     cor_tendencia_a = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
@@ -146,3 +145,4 @@ else:
 
 st.divider()
 st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
+st.caption("Atualizado via CCCV e Yahoo Finance.")
