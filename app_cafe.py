@@ -16,47 +16,27 @@ def buscar_dados_cccv():
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
-        
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
-        
-        try:
-            conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
-        except:
-            conilon_str = df.iloc[-1, 1]
-
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
-        conilon = float(str(conilon_str).replace('.', '').replace(',', '.'))
-        
-        return dura, rio, conilon
+        return dura, rio
     except:
-        return 1696.00, 1349.00, 972.00 
+        return 1694.00, 1349.00 
 
 def buscar_mercado():
     try:
-        # Tickers
-        t_ny = yf.Ticker("KC=F")
-        t_lon = yf.Ticker("RC=F")
-        t_usd = yf.Ticker("USDBRL=X")
-        
-        # Coleta de dados individual com segurança
-        def get_data(ticker):
-            history = ticker.history(period="2d")
-            if not history.empty:
-                preco = history['Close'].iloc[-1]
-                abertura = history['Close'].iloc[-2]
-                variacao = (preco - abertura) / abertura
-                return preco, variacao
-            return 0.0, 0.0
-
-        ny_p, ny_v = get_data(t_ny)
-        lon_p, lon_v = get_data(t_lon)
-        usd_p, usd_v = get_data(t_usd)
-        
-        return ny_p, ny_v, lon_p, lon_v, usd_p, usd_v
+        ticker_ny = yf.Ticker("KC=F")
+        ticker_usd = yf.Ticker("USDBRL=X")
+        info_ny = ticker_ny.info
+        info_usd = ticker_usd.info
+        cot_ny = info_ny.get('regularMarketPrice', 0.0)
+        v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
+        v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
+        return cot_ny, v_ny, cot_usd, v_usd
     except:
-        return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        return 0.0, 0.0, 0.0, 0.0
 
 # --- 3. FUNÇÃO DE ESTILO E FUNDO ---
 def add_bg_and_style(image_file):
@@ -72,6 +52,7 @@ def add_bg_and_style(image_file):
                 background-position: center;
                 background-attachment: fixed;
             }}
+            /* TEXTOS EM BRANCO PURO COM SOMBRA */
             h1, h2, h3, p, span, label, div {{
                 color: #FFFFFF !important;
                 text-shadow: 2px 2px 8px rgba(0,0,0,1) !important;
@@ -91,79 +72,82 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado.")
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
+# TROCADO PARA O NOME QUE VOCÊ PEDIU:
 add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-base_dura, base_rio, base_conilon = buscar_dados_cccv()
-ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
+# Chamando as funções
+base_dura, base_rio = buscar_dados_cccv()
+ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 st.markdown("### 📖 Como funciona este Painel?")
-st.write("Simulação do impacto do mercado global no preço físico do café no ES.")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Cotações oficiais de Bebida Dura, Rio e Conilon (Tipo 7/8) de Vitória.")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
 with exp_col2:
-    st.markdown("**2. Inteligência por Tipo**")
-    st.write("O Arábica segue a Bolsa de **Nova York**, enquanto o Conilon segue a Bolsa de **Londres**.")
+    st.markdown("**2. Variação Combinada**")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Somamos a variação da Bolsa respectiva + Dólar sobre o preço base do dia.")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso:** Valores estimativos para auxílio à decisão.")
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
-# Mudança aqui: verificação mais simples para destravar o carregamento
-if ny_p == 0 and usd_p == 0:
-    st.warning("Aguardando conexão com as bolsas mundiais...")
+if ny_p == 0:
+    st.warning("Carregando dados da bolsa...")
 else:
-    var_arabica = ny_v + usd_v
-    var_conilon = lon_v + usd_v
-    
-    cor_ara = "#00FF00" if var_arabica >= 0 else "#FF4B4B"
-    cor_con = "#00FF00" if var_conilon >= 0 else "#FF4B4B"
+    var_total = ny_v + usd_v
+    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF4B4B"
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
-    c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
-    c4.metric("Tendência Média", f"{((var_arabica + var_conilon)/2*100):.2f}%")
+    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
 
     st.divider()
-    col_d, col_r, col_c = st.columns(3)
+    col_d, col_r = st.columns(2)
 
     # BEBIDA DURA
-    mud_dura = base_dura * var_arabica
+    mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 38px;'>R$ {base_dura + mud_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_dura), value="", delta=float(round(mud_dura, 2)))
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
     # BEBIDA RIO
-    mud_rio = base_rio * var_arabica
+    mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_ara} !important; font-size: 38px;'>R$ {base_rio + mud_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_rio), value="", delta=float(round(mud_rio, 2)))
-
-    # CAFÉ CONILON
-    mud_conilon = base_conilon * var_conilon
-    with col_c:
-        st.subheader("☕ Café CONILON")
-        st.markdown(f"<h2 style='color:{cor_con} !important; font-size: 38px;'>R$ {base_conilon + mud_conilon:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Base: R$ " + str(base_conilon), value="", delta=float(round(mud_conilon, 2)))
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
 st.divider()
-with st.expander("🧐 Como o cálculo é feito?"):
+# --- OPÇÃO PARA O PRODUTOR ENTENDER (FINAL DO SITE) ---
+st.divider()
+with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
     st.markdown("""
-    **Cálculo:** - Arábica: (Variação NY + Variação Dólar) x Preço Base.
-    - Conilon: (Variação Londres + Variação Dólar) x Preço Base.
+    ### A Matemática do Mercado
+    O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de duas forças globais:
+    
+    1. **Bolsa de Nova York (ICE):** É onde o mundo define o valor do café Arábica. Se lá o preço sobe, o mercado aqui tende a acompanhar.
+    2. **Dólar:** Como o café é uma exportação, o produtor recebe o valor convertido. Se o dólar sobe, o seu café vale mais em Reais.
+    
+    **Como o cálculo é feito?**
+    Nós somamos as duas variações do dia. Por exemplo:
+    * Se a Bolsa de NY subir **1%** e o Dólar subir **1%**, a tendência é de uma alta de **2%** no preço físico.
+    * Se a Bolsa subir **1%** mas o Dólar cair **1%**, o preço tende a ficar **estável**.
+    
+    **Resultado Final:**
+    Pegamos o preço oficial de hoje do **CCCV (Vitória)** e aplicamos essa porcentagem. O "Alvo Estimado" mostra qual seria o preço justo caso a cooperativa seguisse exatamente a movimentação do mercado financeiro agora.
     """)
 
 st.caption("Atualizado via CCCV e Yahoo Finance.")
