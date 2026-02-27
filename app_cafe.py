@@ -43,7 +43,7 @@ def add_bg_and_style(image_file):
 add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 
 # --- TÍTULO PRINCIPAL NO TOPO ---
-st.markdown('<h1 class="main-title">Painel do Cafe ☕</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
