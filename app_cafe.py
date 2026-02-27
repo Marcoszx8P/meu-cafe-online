@@ -107,20 +107,20 @@ ny_p, ny_v, ld_p, ld_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 st.markdown("### 📖 Como funciona este Painel?")
-st.write("Simulação do impacto do mercado global no preço físico do café no ES.")
+st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café.")
 
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write(f"Cotações oficiais de Bebida Dura, Rio e Conilon (Vitória/ES).")
+    st.write(f"Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio e Conilon diretamente do site dos sites oficiais do Cafe")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramento de NY, Londres (Investing.com) e Dólar.")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e da Bolsa de Londres (Conilon) e do Dólar Comercial.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Tendência baseada na oscilação internacional sobre o preço base.")
+    st.write("Aplicamos a soma das variações de NY e LN e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso:** Este site está em fase de testes.")
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 if ny_p == 0:
@@ -147,7 +147,7 @@ else:
     mud_c = base_conilon * var_total_conilon
 
     with col_d:
-        st.subheader("☕ DURA")
+        st.subheader("☕  Bebida DURA")
         st.markdown(f"## R$ {base_dura + mud_d:.2f}")
         st.metric(label="Alvo Estimado", value="", delta=f"{mud_d:.2f}")
 
@@ -162,4 +162,4 @@ else:
         st.metric(label="Alvo Estimado", value="", delta=f"{mud_c:.2f}")
 
 st.divider()
-st.caption("Fontes: CCCV Vitória, Investing.com (Londres) e Yahoo Finance (NY/Dólar).")
+st.caption("Fontes: CCCV Vitória")
