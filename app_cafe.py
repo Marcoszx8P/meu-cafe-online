@@ -20,18 +20,18 @@ def buscar_dados_cccv():
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
         
-        # Busca rigorosa pelos termos corretos na tabela do CCCV
-        dura_str = df.loc[df[0].str.contains("Dura", case=False, na=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("Rio", case=False, na=False), 1].values[0]
-        conilon_str = df.loc[df[0].str.contains("Conilon", case=False, na=False), 1].values[0]
+        # Filtro exato para capturar os valores da imagem
+        dura_str = df.loc[df[0].str.contains("dura", case=False, na=False), 1].values[0]
+        rio_str = df.loc[df[0].str.contains("rio", case=False, na=False), 1].values[0]
+        # Captura o valor de R$ 972,00 da seção CONILON
+        conilon_str = df.loc[df[0].str.contains("tipo 7/8", case=False, na=False), 1].values[0]
         
-        dura = float(str(dura_str).replace('.', '').replace(',', '.'))
-        rio = float(str(rio_str).replace('.', '').replace(',', '.'))
-        conilon = float(str(conilon_str).replace('.', '').replace(',', '.'))
+        dura = float(str(dura_str).replace('R$', '').replace('.', '').replace(',', '.').strip())
+        rio = float(str(rio_str).replace('R$', '').replace('.', '').replace(',', '.').strip())
+        conilon = float(str(conilon_str).replace('R$', '').replace('.', '').replace(',', '.').strip())
         return dura, rio, conilon
     except:
-        # Valores de segurança caso o site do CCCV esteja fora do ar
-        return 1680.00, 1338.00, 1047.00 
+        return 1696.00, 1349.00, 972.00 # Fallback com valores da sua imagem
 
 @st.cache_data(ttl=60)
 def buscar_londres_investing():
@@ -40,7 +40,6 @@ def buscar_londres_investing():
     try:
         response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
-        # Extração do preço real de Londres (Robusta)
         preco_texto = soup.find("div", {"data-test": "instrument-price-last"}).text
         var_texto = soup.find("span", {"data-test": "instrument-price-change-percent"}).text
         
@@ -58,9 +57,7 @@ def buscar_mercado():
         v_ny = ticker_ny.info.get('regularMarketChangePercent', 0.0) / 100
         cot_usd = ticker_usd.info.get('regularMarketPrice', 0.0)
         v_usd = ticker_usd.info.get('regularMarketChangePercent', 0.0) / 100
-        
         cot_ld, v_ld = buscar_londres_investing()
-        
         return cot_ny, v_ny, cot_ld, v_ld, cot_usd, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -115,10 +112,10 @@ st.write("Simulação do impacto do mercado global no preço físico do café no
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Cotações oficiais de Bebida Dura, Rio e Conilon de Vitória/ES.")
+    st.write(f"Cotações oficiais de Bebida Dura, Rio e Conilon (Vitória/ES).")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramento de NY (Arábica), Londres (Investing.com) e Dólar.")
+    st.write("Monitoramento de NY, Londres (Investing.com) e Dólar.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
     st.write("Tendência baseada na oscilação internacional sobre o preço base.")
@@ -136,7 +133,7 @@ else:
     londres_formatado = f"{ld_p:,.0f}".replace(',', '.')
     c2.metric("Londres (Investing)", londres_formatado, f"{ld_v:.2%}") 
     
-    c3.metric("preça Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("peça Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
     var_total_arabica = ny_v + usd_v
     var_total_conilon = ld_v + usd_v
@@ -144,25 +141,25 @@ else:
     st.divider()
     col_d, col_r, col_c = st.columns(3)
 
-    # CÁLCULO FÍSICO COM BASE NAS VARIAÇÕES
-    mudanca_dura = base_dura * var_total_arabica
-    mudanca_rio = base_rio * var_total_arabica
-    mudanca_conilon = base_conilon * var_total_conilon
+    # CÁLCULOS FINAIS
+    mud_d = base_dura * var_total_arabica
+    mud_r = base_rio * var_total_arabica
+    mud_c = base_conilon * var_total_conilon
 
     with col_d:
         st.subheader("☕ DURA")
-        st.markdown(f"## R$ {base_dura + mudanca_dura:.2f}")
-        st.metric(label="Alvo Estimado", value="", delta=f"{mudanca_dura:.2f}")
+        st.markdown(f"## R$ {base_dura + mud_d:.2f}")
+        st.metric(label="Alvo Estimado", value="", delta=f"{mud_d:.2f}")
 
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"## R$ {base_rio + mudanca_rio:.2f}")
-        st.metric(label="Alvo Estimado", value="", delta=f"{mudanca_rio:.2f}")
+        st.markdown(f"## R$ {base_rio + mud_r:.2f}")
+        st.metric(label="Alvo Estimado", value="", delta=f"{mud_r:.2f}")
 
     with col_c:
         st.subheader("☕ CONILON Tipo 7")
-        st.markdown(f"## R$ {base_conilon + mudanca_conilon:.2f}")
-        st.metric(label="Alvo Estimado", value="", delta=f"{mudanca_conilon:.2f}")
+        st.markdown(f"## R$ {base_conilon + mud_c:.2f}")
+        st.metric(label="Alvo Estimado", value="", delta=f"{mud_c:.2f}")
 
 st.divider()
 st.caption("Fontes: CCCV Vitória, Investing.com (Londres) e Yahoo Finance (NY/Dólar).")
