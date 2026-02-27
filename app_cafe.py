@@ -8,7 +8,6 @@ import os
 # Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
-# --- FUNÇÃO DE FUNDO E ESTILO ---
 def add_bg_and_style(image_file):
     if os.path.exists(image_file):
         with open(image_file, "rb") as f:
@@ -22,12 +21,10 @@ def add_bg_and_style(image_file):
                 background-position: center;
                 background-attachment: fixed;
             }}
-            /* Estilização global */
             h1, h2, h3, p, span, label, div {{
                 color: white !important;
                 text-shadow: 2px 2px 4px rgba(0,0,0,1) !important;
             }}
-            /* Título Principal */
             .main-title {{
                 text-align: center;
                 font-size: 50px !important;
@@ -40,11 +37,9 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
 
-# Tenta carregar a imagem de fundo
 add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 
-# --- TÍTULO PRINCIPAL NO TOPO ---
-st.markdown('<h1 class="main-title">Painel do Café ☕</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Previsão do Café ☕</h1>', unsafe_allow_html=True)
 
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
@@ -53,92 +48,82 @@ def buscar_dados_cccv():
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
-        dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
+        # Localiza as linhas que contém "Dura" e "Rio"
+        dura_str = df[df[0].str.contains("Dura", case=False, na=False)][1].values[0]
+        rio_str = df[df[0].str.contains("Rio", case=False, na=False)][1].values[0]
+        
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
         return dura, rio
-    except:
+    except Exception as e:
         return 1694.00, 1349.00 
 
 def buscar_mercado():
     try:
-        cafe_ny = yf.download("KC=F", period="5d", interval="1d", progress=False)
-        dolar = yf.download("USDBRL=X", period="5d", interval="1d", progress=False)
-        cot_ny = float(cafe_ny['Close'].iloc[-1])
-        v_ny = (cot_ny / float(cafe_ny['Close'].iloc[-2])) - 1
-        cot_usd = float(dolar['Close'].iloc[-1])
-        v_usd = (cot_usd / float(dolar['Close'].iloc[-2])) - 1
+        # Buscamos um período maior para garantir que teremos os dois últimos pregões válidos
+        cafe_ny = yf.download("KC=F", period="7d", interval="1d", progress=False)['Close']
+        dolar = yf.download("USDBRL=X", period="7d", interval="1d", progress=False)['Close']
+        
+        # Ajuste para lidar com MultiIndex do yfinance se necessário
+        if isinstance(cafe_ny, pd.DataFrame):
+            cafe_ny = cafe_ny.iloc[:, 0]
+        if isinstance(dolar, pd.DataFrame):
+            dolar = dolar.iloc[:, 0]
+
+        # Pegar os dois últimos valores não nulos
+        cafe_ny = cafe_ny.dropna()
+        dolar = dolar.dropna()
+
+        cot_ny = float(cafe_ny.iloc[-1])
+        prev_ny = float(cafe_ny.iloc[-2])
+        v_ny = (cot_ny / prev_ny) - 1
+
+        cot_usd = float(dolar.iloc[-1])
+        prev_usd = float(dolar.iloc[-2])
+        v_usd = (cot_usd / prev_usd) - 1
+
         return cot_ny, v_ny, cot_usd, v_usd
-    except:
+    except Exception as e:
         return 0.0, 0.0, 0.0, 0.0
 
-st.divider()
-st.markdown("### 📖 Como funciona este Painel?")
-st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
-
-exp_col1, exp_col2, exp_col3 = st.columns(3)
-with exp_col1:
-    st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
-with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
-with exp_col3:
-    st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
-
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
-st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
-
+# --- LÓGICA DE EXIBIÇÃO ---
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
 if ny_p == 0:
-    st.warning("Carregando dados da bolsa...")
+    st.warning("Aguardando resposta do Yahoo Finance... Tente atualizar a página.")
 else:
-    var_total = ny_v + usd_v
+    # A variação combinada correta é o produto das variações: (1+v1)*(1+v2) - 1
+    var_total = ((1 + ny_v) * (1 + usd_v)) - 1
     cor_tendencia = "#00FF00" if var_total >= 0 else "#FF0000"
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
-    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
+    c2.metric("Dólar Comercial", f"R$ {usd_p:.4f}", f"{usd_v:.2%}")
+    c3.metric("Tendência Real Combinada", f"{(var_total*100):.2f}%")
 
     st.divider()
     col_d, col_r = st.columns(2)
 
-    # --- BEBIDA DURA ---
-    mudanca_dura = base_dura * var_total
+    # --- CÁLCULO DOS ALVOS ---
+    preco_estimado_dura = base_dura * (1 + var_total)
+    mudanca_reais_dura = preco_estimado_dura - base_dura
+
+    preco_estimado_rio = base_rio * (1 + var_total)
+    mudanca_reais_rio = preco_estimado_rio - base_rio
+
     with col_d:
-        st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
+        st.subheader("☕ Bebida DURA (Estimado)")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 45px;'>R$ {preco_estimado_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Diferença vs Base CCCV", value=f"R$ {preco_estimado_dura:.2f}", delta=f"R$ {mudanca_reais_dura:.2f}")
 
-    # --- BEBIDA RIO ---
-    mudanca_rio = base_rio * var_total
     with col_r:
-        st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
+        st.subheader("☕ Bebida RIO (Estimado)")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 45px;'>R$ {preco_estimado_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Diferença vs Base CCCV", value=f"R$ {preco_estimado_rio:.2f}", delta=f"R$ {mudanca_reais_rio:.2f}")
 
-# --- OPÇÃO PARA O PRODUTOR ENTENDER (FINAL DO SITE) ---
 st.divider()
-with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
-    st.markdown("""
-    ### A Matemática do Mercado
-    O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de duas forças globais:
-    
-    1. **Bolsa de Nova York (ICE):** É onde o mundo define o valor do café Arábica. Se lá o preço sobe, o mercado aqui tende a acompanhar.
-    2. **Dólar:** Como o café é uma exportação, o produtor recebe o valor convertido. Se o dólar sobe, o seu café vale mais em Reais.
-    
-    **Como o cálculo é feito?**
-    Nós somamos as duas variações do dia. Por exemplo:
-    * Se a Bolsa de NY subir **1%** e o Dólar subir **1%**, a tendência é de uma alta de **2%** no preço físico.
-    * Se a Bolsa subir **1%** mas o Dólar cair **1%**, o preço tende a ficar **estável**.
-    
-    **Resultado Final:**
-    Pegamos o preço oficial de hoje do **CCCV (Vitória)** e aplicamos essa porcentagem. O "Alvo Estimado" mostra qual seria o preço justo caso a cooperativa seguisse exatamente a movimentação do mercado financeiro agora.
-    """)
-
-st.caption("Atualizado via CCCV e Yahoo Finance.")
+st.markdown("### 📖 Como funciona este Painel?")
+st.write("O sistema projeta o preço físico do ES aplicando a variação percentual de NY e do Dólar sobre o último fechamento do CCCV.")
+st.info("⚠️ **Aviso:** Valores aproximados baseados em fechamento de mercado.")
+st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
