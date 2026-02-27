@@ -29,17 +29,16 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Tickers estáveis para evitar o erro de 0.00
-        t_ny = yf.Ticker("KC=F")
-        t_lon = yf.Ticker("LRC=F") # Ticker correto para Londres
-        t_usd = yf.Ticker("USDBRL=X")
+        # TICKERS OFICIAIS DO YAHOO FINANCE
+        t_ny = yf.Ticker("KC=F")      # Arábica NY
+        t_lon = yf.Ticker("LRC=F")    # Robusta Londres (Ticker Correto)
+        t_usd = yf.Ticker("USDBRL=X") # Dólar
         
-        # Captura via histórico (2 dias) para garantir que o dado exista
+        # Uso do .history para evitar erro de dados vazios (0.00)
         h_ny = t_ny.history(period="2d")
         h_lon = t_lon.history(period="2d")
         h_usd = t_usd.history(period="2d")
         
-        # Preços de fechamento
         cot_ny = h_ny['Close'].iloc[-1]
         v_ny = (h_ny['Close'].iloc[-1] / h_ny['Close'].iloc[-2]) - 1
         
@@ -86,7 +85,7 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
 add_bg_and_style('fundo_cafe_fazenda.avif')
@@ -97,30 +96,13 @@ base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
-st.markdown("### 📖 Como funciona este Painel?")
-st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
-exp_col1, exp_col2, exp_col3 = st.columns(3)
-with exp_col1:
-    st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura, Bebida Rio e Conilon diretamente do site do CCCV em Vitória.")
-with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora a oscilação da Bolsa de NY (Arábica), Bolsa de Londres (Conilon) e do Dólar Comercial.")
-with exp_col3:
-    st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações das bolsas e do Dólar sobre o preço base para prever a tendência.")
-
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
-st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
-
-# A correção principal está aqui: ny_p agora virá preenchido pelo history
 if ny_p == 0:
-    st.warning("Carregando dados da bolsa... Se persistir, verifique sua conexão.")
+    st.warning("Aguardando resposta do mercado financeiro...")
 else:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
+    c2.metric("Bolsa Londres (Robusta)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
     c3.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
     var_total_arabica = ny_v + usd_v
@@ -130,6 +112,7 @@ else:
 
     st.divider()
     
+    # Restante do seu código original de exibição...
     st.markdown("### 🌿 Café Arábica")
     col_d, col_r = st.columns(2)
     cor_tendencia_a = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
@@ -162,4 +145,4 @@ else:
         st.write(f"Variação Combinada (Londres + Dólar): **{var_total_conilon:.2%}**")
 
 st.divider()
-st.caption("Atualizado via CCCV e Yahoo Finance.")
+st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
