@@ -3,43 +3,43 @@ import pandas as pd
 import yfinance as yf
 import requests
 import base64
+import os
 
 # Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
-# --- FUNÇÃO PARA IMAGEM DE FUNDO ---
+# --- FUNÇÃO PARA INJETAR A IMAGEM DE FUNDO ---
 def add_bg_from_local(image_file):
-    with open(image_file, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read())
-    st.markdown(
-    f"""
-    <style>
-    .stApp {{
-        background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url("data:image/png;base64,{encoded_string.decode()}");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
-    }}
-    /* Ajuste de cor de texto para contraste no fundo escuro */
-    h1, h2, h3, p, span, .stMetric {{
-        color: white !important;
-    }}
-    .stMarkdown {{
-        background: rgba(0, 0, 0, 0.4);
-        padding: 10px;
-        border-radius: 10px;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True
-    )
+    if os.path.exists(image_file):
+        with open(image_file, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read())
+        st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), url("data:image/jpg;base64,{encoded_string.decode()}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+        /* Estilização para garantir leitura no GitHub/Cloud */
+        h1, h2, h3, p, span, .stMetric, label, .stMarkdown {{
+            color: white !important;
+        }}
+        .stMetric {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+        )
+    else:
+        st.error(f"Erro: O arquivo '{image_file}' não foi encontrado no repositório do GitHub.")
 
-# Chame a função com o nome exato do seu arquivo
-# Certifique-se que o arquivo "historia_do_cafe-968x660-1-968x560.jpg" está na mesma pasta do script
-try:
-    add_bg_from_local('historia_do_cafe-968x660-1-968x560.jpg')
-except:
-    pass
+# Tenta carregar a imagem
+add_bg_from_local('historia_do_cafe-968x660-1-968x560.jpg')
 
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
@@ -93,7 +93,7 @@ with exp_col3:
     st.markdown("**3. Alvo Estimado**")
     st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso de Versão Beta:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
+st.info("⚠️ **Aviso de Versão Beta:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
 
 st.markdown("<br><br>", unsafe_allow_html=True) 
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
@@ -114,7 +114,6 @@ else:
     st.divider()
     col_d, col_r = st.columns(2)
 
-    # --- BEBIDA DURA ---
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
@@ -125,16 +124,9 @@ else:
             delta_color="normal"
         )
 
-    # --- BEBIDA RIO ---
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
         st.metric(
             label="Alvo Estimado", 
-            value=f"R$ {base_rio + mudanca_rio:.2f}", 
-            delta=float(round(mudanca_rio, 2)),
-            delta_color="normal"
-        )
-
-st.divider()
-st.caption("Atualizado via CCCV e Yahoo Finance.")
+            value=
