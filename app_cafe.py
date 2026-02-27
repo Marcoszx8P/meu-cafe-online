@@ -6,6 +6,47 @@ import requests
 # 1. Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
+# --- INJEÇÃO DE CSS PARA IMAGEM DE FUNDO ---
+# Você pode substituir este URL por qualquer link direto de imagem de café.
+# Link de exemplo: uma imagem de grãos de café desfocada para não atrapalhar a leitura.
+url_imagem_cafe = "https://images.unsplash.com/photo-1501747188-61c00b3d8ba0?q=80&w=1920"
+
+page_bg_img = f"""
+<style>
+[data-testid="stAppViewContainer"] > .main {{
+background-image: url("{url_imagem_cafe}");
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
+background-attachment: fixed;
+}}
+
+/* Opcional: Adiciona uma camada escura semi-transparente sobre a imagem 
+   para garantir que o texto branco/padrão do Streamlit fique legível */
+[data-testid="stAppViewContainer"] > .main::before {{
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4); /* Preto com 40% de opacidade */
+    z-index: -1;
+}}
+
+/* Garante que os containers de input/st.metric tenham fundo se necessário para leitura */
+[data-testid="stMetricValue"] {{
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 5px;
+    border-radius: 5px;
+}}
+</style>
+"""
+
+st.markdown(page_bg_img, unsafe_allow_html=True)
+# ---------------------------------------------
+
+
 # 2. Funções de captura de dados
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
@@ -14,12 +55,20 @@ def buscar_dados_cccv():
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
-        dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
+        # Procura linhas que contenham as palavras-chave
+        idx_dura = df[df[0].str.contains("dura", case=False, na=False)].index[0]
+        idx_rio = df[df[0].str.contains("rio", case=False, na=False)].index[0]
+        
+        # Pega o valor na coluna 1
+        dura_str = df.iloc[idx_dura, 1]
+        rio_str = df.iloc[idx_rio, 1]
+        
+        # Converte para float removendo pontos e trocando vírgula por ponto
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
         return dura, rio
-    except:
+    except Exception as e:
+        # st.error(f"Erro ao buscar CCCV: {e}")
         return 1694.00, 1349.00
 
 def buscar_mercado_completo():
@@ -29,14 +78,17 @@ def buscar_mercado_completo():
         dolar_hist = yf.download("USDBRL=X", period="10d", interval="1d", progress=False)['Close']
         
         # Dados atuais para os cards (últimos dois dias úteis)
-        cot_ny = float(cafe_hist.iloc[-1])
-        v_ny = (cot_ny / float(cafe_hist.iloc[-2])) - 1
+        cot_ny = float(cafe_hist.iloc[-1].iloc[0]) if hasattr(cafe_hist.iloc[-1], 'iloc') else float(cafe_hist.iloc[-1])
+        cot_ny_anterior = float(cafe_hist.iloc[-2].iloc[0]) if hasattr(cafe_hist.iloc[-2], 'iloc') else float(cafe_hist.iloc[-2])
+        v_ny = (cot_ny / cot_ny_anterior) - 1
         
-        cot_usd = float(dolar_hist.iloc[-1])
-        v_usd = (cot_usd / float(dolar_hist.iloc[-2])) - 1
+        cot_usd = float(dolar_hist.iloc[-1].iloc[0]) if hasattr(dolar_hist.iloc[-1], 'iloc') else float(dolar_hist.iloc[-1])
+        cot_usd_anterior = float(dolar_hist.iloc[-2].iloc[0]) if hasattr(dolar_hist.iloc[-2], 'iloc') else float(dolar_hist.iloc[-2])
+        v_usd = (cot_usd / cot_usd_anterior) - 1
         
         return cot_ny, v_ny, cot_usd, v_usd, cafe_hist, dolar_hist
-    except:
+    except Exception as e:
+        # st.error(f"Erro ao buscar Yahoo Finance: {e}")
         return 0.0, 0.0, 0.0, 0.0, None, None
 
 # --- TÍTULO E EXPLICAÇÃO (NO TOPO) ---
@@ -62,11 +114,13 @@ Antes disso, o cálculo utiliza o fechamento do dia anterior como base.""")
 st.divider()
 
 # --- RESULTADOS ATUAIS ---
-base_dura, base_rio = buscar_dados_cccv()
-ny_p, ny_v, usd_p, usd_v, hist_ny, hist_usd = buscar_mercado_completo()
+# Usando st.spinner para feedback visual enquanto carrega
+with st.spinner('Atualizando cotações...'):
+    base_dura, base_rio = buscar_dados_cccv()
+    ny_p, ny_v, usd_p, usd_v, hist_ny, hist_usd = buscar_mercado_completo()
 
 if ny_p == 0:
-    st.warning("Carregando dados da bolsa... Atualize a página em instantes.")
+    st.warning("Carregando dados da bolsa ou erro na API... Atualize a página em instantes.")
 else:
     var_total = ny_v + usd_v
     
@@ -95,15 +149,21 @@ else:
     st.subheader("📅 Histórico de Fechamento (Últimos Dias)")
     
     if hist_ny is not None and hist_usd is not None:
-        # Criando o DataFrame alinhando as datas corretamente
-        df_final = pd.merge(hist_ny, hist_usd, left_index=True, right_index=True, how='inner')
-        df_final.columns = ['Bolsa NY (pts)', 'Dólar (R$)']
-        
-        # Formata data e organiza
-        df_final.index = df_final.index.strftime('%d/%m/%Y')
-        st.dataframe(df_final.sort_index(ascending=False).style.format("{:.2f}"), use_container_width=True)
+        try:
+            # Criando o DataFrame alinhando as datas corretamente
+            df_final = pd.merge(hist_ny, hist_usd, left_index=True, right_index=True, how='inner')
+            df_final.columns = ['Bolsa NY (pts)', 'Dólar (R$)']
+            
+            # Formata data e organiza
+            df_final.index = df_final.index.strftime('%d/%m/%Y')
+            
+            # Aplica formatação e exibe
+            st.dataframe(df_final.sort_index(ascending=False).style.format("{:.2f}"), use_container_width=True)
+        except Exception as e:
+            st.error(f"Erro ao processar histórico: {e}")
 
 # --- RODAPÉ ---
+st.divider()
 st.warning("⚠️ **Versão Beta:** Estimativas matemáticas para auxílio na tomada de decisão.")
-st.markdown("<br><br><h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
+st.markdown("<br><br><h1 style='text-align: center; color: white;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 st.caption("Fontes: CCCV e Yahoo Finance.")
