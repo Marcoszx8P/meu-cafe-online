@@ -131,4 +131,23 @@ else:
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
 st.divider()
+# --- OPÇÃO PARA O PRODUTOR ENTENDER (FINAL DO SITE) ---
+st.divider()
+with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
+    st.markdown("""
+    ### A Matemática do Mercado
+    O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de duas forças globais:
+    
+    1. **Bolsa de Nova York (ICE):** É onde o mundo define o valor do café Arábica. Se lá o preço sobe, o mercado aqui tende a acompanhar.
+    2. **Dólar:** Como o café é uma exportação, o produtor recebe o valor convertido. Se o dólar sobe, o seu café vale mais em Reais.
+    
+    **Como o cálculo é feito?**
+    Nós somamos as duas variações do dia. Por exemplo:
+    * Se a Bolsa de NY subir **1%** e o Dólar subir **1%**, a tendência é de uma alta de **2%** no preço físico.
+    * Se a Bolsa subir **1%** mas o Dólar cair **1%**, o preço tende a ficar **estável**.
+    
+    **Resultado Final:**
+    Pegamos o preço oficial de hoje do **CCCV (Vitória)** e aplicamos essa porcentagem. O "Alvo Estimado" mostra qual seria o preço justo caso a cooperativa seguisse exatamente a movimentação do mercado financeiro agora.
+    """)
+
 st.caption("Atualizado via CCCV e Yahoo Finance.")
