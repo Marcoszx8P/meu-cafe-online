@@ -8,7 +8,7 @@ import os
 # Configuração da página
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
-# --- FUNÇÃO PARA IMAGEM DE FUNDO E ESTILO ---
+# --- FUNÇÃO DE FUNDO E ESTILO (NÃO ALTERAR) ---
 def add_bg_and_style(image_file):
     if os.path.exists(image_file):
         with open(image_file, "rb") as f:
@@ -17,35 +17,28 @@ def add_bg_and_style(image_file):
             f"""
             <style>
             .stApp {{
-                background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("data:image/jpg;base64,{encoded_string}");
+                background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/jpg;base64,{encoded_string}");
                 background-size: cover;
                 background-position: center;
                 background-attachment: fixed;
             }}
-            
-            /* Torna todos os textos brancos e adiciona sombra para legibilidade */
-            h1, h2, h3, p, span, label, .stMetric {{
+            /* Estilização para combinar com o fundo escuro */
+            h1, h2, h3, p, span, label, div {{
                 color: white !important;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.8) !important;
+                text-shadow: 2px 2px 4px rgba(0,0,0,1) !important;
             }}
-
-            /* Estiliza os blocos de explicação para não sumirem no fundo */
-            .stMarkdown div p {{
-                background: rgba(0, 0, 0, 0.4);
-                padding: 10px;
-                border-radius: 8px;
-            }}
-
-            /* Ajusta a cor das métricas (números) especificamente */
-            [data-testid="stMetricValue"] {{
-                color: #F1C40F !important; /* Amarelo dourado para os preços se destacarem */
+            /* Deixa as caixas de métricas levemente escuras para leitura */
+            [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
+                background: rgba(0, 0, 0, 0.5);
+                padding: 5px 10px;
+                border-radius: 5px;
             }}
             </style>
             """,
             unsafe_allow_html=True
         )
 
-# Tenta carregar a imagem que você subiu no GitHub
+# Aplica o fundo se a imagem existir
 add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 
 def buscar_dados_cccv():
@@ -86,7 +79,6 @@ Este site realiza uma simulação do impacto do mercado financeiro global no pre
 A lógica funciona em três etapas principais:
 """)
 
-# Colunas de explicação
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 
 with exp_col1:
@@ -101,7 +93,7 @@ with exp_col3:
     st.markdown("**3. Alvo Estimado**")
     st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso de Versão Beta:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
+st.info("⚠️ **Aviso de Versão Beta:** Este site está em fase de testes. Os valores são estimativas matemáticas.")
 
 st.markdown("<br><br>", unsafe_allow_html=True) 
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
@@ -116,4 +108,33 @@ else:
     
     c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Dólar Comercial",
+    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
+
+    st.divider()
+    col_d, col_r = st.columns(2)
+
+    # --- BEBIDA DURA ---
+    mudanca_dura = base_dura * var_total
+    with col_d:
+        st.subheader("☕ Bebida DURA")
+        st.metric(
+            label="Alvo Estimado", 
+            value=f"R$ {base_dura + mudanca_dura:.2f}", 
+            delta=float(round(mudanca_dura, 2)),
+            delta_color="normal"
+        )
+
+    # --- BEBIDA RIO ---
+    mudanca_rio = base_rio * var_total
+    with col_r:
+        st.subheader("☕ Bebida RIO")
+        st.metric(
+            label="Alvo Estimado", 
+            value=f"R$ {base_rio + mudanca_rio:.2f}", 
+            delta=float(round(mudanca_rio, 2)),
+            delta_color="normal"
+        )
+
+st.divider()
+st.caption("Atualizado via CCCV e Yahoo Finance.")
