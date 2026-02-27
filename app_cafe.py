@@ -62,14 +62,22 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        cafe_ny = yf.download("KC=F", period="5d", interval="1d", progress=False)
-        dolar = yf.download("USDBRL=X", period="5d", interval="1d", progress=False)
+        # Buscamos os dados de hoje e ontem (2 dias garantem o fechamento anterior)
+        cafe_ny = yf.download("KC=F", period="2d", interval="1d", progress=False)
+        dolar = yf.download("USDBRL=X", period="2d", interval="1d", progress=False)
+
+        # Cotações atuais (última linha do dataframe)
         cot_ny = float(cafe_ny['Close'].iloc[-1])
-        v_ny = (cot_ny / float(cafe_ny['Close'].iloc[-2])) - 1
         cot_usd = float(dolar['Close'].iloc[-1])
+
+        # Pegando o fechamento anterior (penúltima linha) para bater com o Yahoo
+        # A conta é: (Preço Atual / Fechamento Anterior) - 1
+        v_ny = (cot_ny / float(cafe_ny['Close'].iloc[-2])) - 1
         v_usd = (cot_usd / float(dolar['Close'].iloc[-2])) - 1
+
         return cot_ny, v_ny, cot_usd, v_usd
-    except:
+    except Exception as e:
+        print(f"Erro ao buscar dados: {e}")
         return 0.0, 0.0, 0.0, 0.0
 
 st.divider()
