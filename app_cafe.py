@@ -1,108 +1,56 @@
 import streamlit as st
-import pandas as pd
 import yfinance as yf
-import requests
-import base64
-import os
-from datetime import datetime
+import pandas as pd
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Painel do Café ☕", page_icon="☕", layout="wide")
+# Configuração da página
+st.set_page_config(page_title="Painel do Café 2026", layout="wide")
 
-# --- 2. ESTILO E FUNDO ---
-def add_bg_and_style(image_file):
-    if os.path.exists(image_file):
-        with open(image_file, "rb") as f:
-            encoded_string = base64.b64encode(f.read()).decode()
-        st.markdown(
-            f"""
-            <style>
-            .stApp {{
-                background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/avif;base64,{{encoded_string}}");
-                background-size: cover; background-position: center; background-attachment: fixed;
-            }}
-            h1, h2, h3, p, span, label, div {{
-                color: #FFFFFF !important; text-shadow: 2px 2px 8px rgba(0,0,0,1) !important;
-            }}
-            .main-title {{ text-align: center; font-size: 50px !important; font-weight: bold; margin-bottom: 10px; color: #F1C40F !important; }}
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+st.title("☕ Painel de Análise: Arábica vs Conilon")
+st.markdown("Análise de tendências e previsão baseada em médias móveis.")
 
-# --- 3. FUNÇÃO ROBUSTA DE BUSCA ---
-def buscar_dados_completos():
-    # Inicia com valores padrão (Segurança contra erros)
-    resultados = {
-        'ny_p': 280.0, 'ny_v': 0.0, 'lon_p': 4500.0, 'lon_v': 0.0, 
-        'usd_p': 5.13, 'usd_v': 0.0, 'b_dura': 1690.0, 'b_rio': 1330.0, 'b_con': 1440.0
-    }
+# Função para buscar dados
+def buscar_dados(ticker, periodo="6mo"):
+    data = yf.download(ticker, period=periodo, interval="1d")
+    return data
 
-    # Busca Preços Físicos (CCCV)
-    try:
-        res = requests.get("https://www.cccv.org.br/cotacao/", headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        df_f = pd.read_html(res.text)[0]
-        resultados['b_dura'] = float(str(df_f.loc[df_f[0].str.contains("dura", case=False), 1].values[0]).replace('.', '').replace(',', '.'))
-        resultados['b_rio'] = float(str(df_f.loc[df_f[0].str.contains("rio", case=False), 1].values[0]).replace('.', '').replace(',', '.'))
-        resultados['b_con'] = float(str(df_f.loc[df_f[0].str.contains("conilon", case=False), 1].values[0]).replace('.', '').replace(',', '.'))
-    except: pass
+# Sidebar para escolha do café
+cafe_tipo = st.sidebar.selectbox("Escolha o tipo de Café", ["Arábica (NY)", "Conilon/Robusta (Londres)"])
+ticker = "KC=F" if cafe_tipo == "Arábica (NY)" else "RC=F"
 
-    # Busca Mercado (Yahoo Finance) com tratamento de erro por ativo
-    for ticker, chave_p, chave_v in [("KC=F", 'ny_p', 'ny_v'), ("RC=F", 'lon_p', 'lon_v'), ("USDBRL=X", 'usd_p', 'usd_v')]:
-        try:
-            data = yf.download(ticker, period="5d", interval="1d", progress=False)['Close'].dropna()
-            if not data.empty and len(data) >= 2:
-                resultados[chave_p] = float(data.iloc[-1])
-                resultados[chave_v] = (float(data.iloc[-1]) / float(data.iloc[-2])) - 1
-        except: continue
-            
-    return resultados
+# Obtendo os dados
+df = buscar_dados(ticker)
 
-# --- 4. EXECUÇÃO ---
-add_bg_and_style('fundo_cafe_fazenda.avif')
-st.markdown('<h1 class="main-title">Painel do Café ☕</h1>', unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center;'>Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</p>", unsafe_allow_html=True)
+if not df.empty:
+    # Cálculos de Indicadores
+    preco_atual = df['Close'].iloc[-1]
+    preco_anterior = df['Close'].iloc[-2]
+    variacao = preco_atual - preco_anterior
+    
+    # Média Móvel Simples (Trend)
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+    tendencia = "Subida 📈" if preco_atual > df['MA20'].iloc[-1] else "Baixa 📉"
+    
+    # Layout de métricas
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Preço Atual (USD)", f"{preco_atual:.2f}")
+    col2.metric("Variação Diária", f"{variacao:.2f}", delta_color="normal")
+    col3.metric("Tendência (Base MA20)", tendencia)
 
-# Coleta os dados (sempre retornará algo, evitando o NameError)
-d = buscar_dados_completos()
+    # Gráfico
+    fig = go.Figure()
+    fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'], 
+                                 low=df['Low'], close=df['Close'], name="Preço"))
+    fig.add_trace(go.Scatter(x=df.index, y=df['MA20'], name="Média 20 dias", line=dict(color='orange')))
+    
+    st.plotly_chart(fig, use_container_width=True)
 
-# Cálculos de Tendência
-t_arabica = d['ny_v'] + d['usd_v']
-t_conilon = d['lon_v'] + d['usd_v']
-cor_ara = "#00FF00" if t_arabica >= 0 else "#FF4B4B"
-cor_con = "#00FF00" if t_conilon >= 0 else "#FF4B4B"
-
-# Layout de Métricas
-m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("NY (Arábica)", f"{d['ny_p']:.2f} pts", f"{d['ny_v']:.2%}")
-m2.metric("Londres (Conilon)", f"{d['lon_p']:.0f} USD", f"{d['lon_v']:.2%}")
-m3.metric("Dólar", f"R$ {d['usd_p']:.2f}", f"{d['usd_v']:.2%}")
-m4.metric("Tendência Arábica", f"{t_arabica:.2%}")
-m5.metric("Tendência Conilon", f"{t_conilon:.2%}")
-
-st.divider()
-
-# Colunas de Preço Alvo
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.subheader("☕ Bebida DURA")
-    st.markdown(f"<h2 style='color:{cor_ara}; font-size: 42px;'>R$ {d['b_dura'] * (1+t_arabica):.2f}</h2>", unsafe_allow_html=True)
-    st.caption(f"Base ES: R$ {d['b_dura']:.2f}")
-
-with c2:
-    st.subheader("☕ Bebida RIO")
-    st.markdown(f"<h2 style='color:{cor_ara}; font-size: 42px;'>R$ {d['b_rio'] * (1+t_arabica):.2f}</h2>", unsafe_allow_html=True)
-    st.caption(f"Base ES: R$ {d['b_rio']:.2f}")
-
-with c3:
-    st.subheader("☕ CONILON (MG)")
-    st.markdown(f"<h2 style='color:{cor_con}; font-size: 42px;'>R$ {d['b_con'] * (1+t_conilon):.2f}</h2>", unsafe_allow_html=True)
-    st.caption(f"Base Minas: R$ {d['b_con']:.2f}")
-
-st.divider()
-
-with st.expander("🧐 Como funciona o cálculo?"):
-    st.write(f"**Arábica:** Bolsa NY ({d['ny_v']:.2%}) + Dólar ({d['usd_v']:.2%}) = {t_arabica:.2%}")
-    st.write(f"**Conilon:** Bolsa Londres ({d['lon_v']:.2%}) + Dólar ({d['usd_v']:.2%}) = {t_conilon:.2%}")
-
-st.markdown("<p style='text-align: center; opacity: 0.7;'>Criado por: Marcos Gomes</p>", unsafe_allow_html=True)
+    # Lógica de Análise Simples
+    st.subheader("Análise de Mercado")
+    if tendencia == "Subida 📈":
+        st.success(f"O {cafe_tipo} está em tendência de alta. O suporte atual está em torno de {df['MA20'].iloc[-1]:.2f}.")
+    else:
+        st.error(f"O {cafe_tipo} está em tendência de baixa. Pode cair mais até encontrar novo suporte.")
+else:
+    st.error("Erro ao carregar dados. Verifique a conexão ou o ticker.")
