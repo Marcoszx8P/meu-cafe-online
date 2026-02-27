@@ -5,8 +5,10 @@ import requests
 import base64
 import os
 
-# --- 1. CONFIGURAÇÃO E DEFINIÇÕES (Ordem correta para evitar NameError) ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
+# --- 2. FUNÇÕES DE BUSCA ---
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -24,114 +26,13 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        tk_ny = yf.Ticker("KC=F")
-        tk_usd = yf.Ticker("USDBRL=X")
-        info_ny = tk_ny.info
-        info_usd = tk_usd.info
+        ticker_ny = yf.Ticker("KC=F")
+        ticker_usd = yf.Ticker("USDBRL=X")
+        info_ny = ticker_ny.info
+        info_usd = ticker_usd.info
         cot_ny = info_ny.get('regularMarketPrice', 0.0)
-        cot_usd = info_usd.get('regularMarketPrice', 0.0)
-        # Pega a porcentagem exata do Yahoo
         v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
         v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
         return cot_ny, v_ny, cot_usd, v_usd
     except:
-        return 0.0, 0.0, 0.0, 0.0
-
-def add_bg_and_style(image_file):
-    if os.path.exists(image_file):
-        with open(image_file, "rb") as f:
-            encoded_string = base64.b64encode(f.read()).decode()
-        st.markdown(
-            f"""
-            <style>
-            .stApp {{
-                /* Filtro escuro para o texto branco brilhar */
-                background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("data:image/avif;base64,{encoded_string}");
-                background-size: cover;
-                background-position: center;
-                background-attachment: fixed;
-            }}
-            /* TEXTOS BRANCOS COM SOMBRA PARA LEITURA */
-            h1, h2, h3, p, span, label, div {{
-                color: white !important;
-                text-shadow: 2px 2px 4px rgba(0,0,0,1) !important;
-            }}
-            /* Título em Amarelo/Dourado para destaque */
-            .main-title {{
-                text-align: center;
-                font-size: 50px !important;
-                font-weight: bold;
-                margin-bottom: 20px;
-                color: #F1C40F !important;
-                text-shadow: 3px 3px 6px rgba(0,0,0,1) !important;
-            }}
-            /* Garante que os valores das métricas também fiquem brancos */
-            [data-testid="stMetricValue"] {{
-                color: white !important;
-            }}
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-
-# --- 2. EXECUÇÃO ---
-
-st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
-
-# Lembre-se de manter o nome da imagem igual ao arquivo na pasta
-add_bg_and_style('delicioso_cafe.avif')
-
-st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
-
-# Agora chamamos os dados
-base_dura, base_rio = buscar_dados_cccv()
-ny_p, ny_v, usd_p, usd_v = buscar_mercado()
-
-st.divider()
-st.markdown("### 📖 Como funciona este Painel?")
-st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
-
-exp_col1, exp_col2, exp_col3 = st.columns(3)
-with exp_col1:
-    st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais diretamente do site do CCCV.")
-with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramos a Bolsa de Nova York e o Dólar em tempo real.")
-with exp_col3:
-    st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos as variações financeiras sobre o preço base capixaba.")
-
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas.")
-st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
-
-if ny_p == 0:
-    st.warning("Carregando dados da bolsa...")
-else:
-    var_total = ny_v + usd_v
-    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF4B4B"
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
-    c2.metric("Dólar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
-    c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
-
-    st.divider()
-    col_d, col_r = st.columns(2)
-
-    # BEBIDA DURA
-    mudanca_dura = base_dura * var_total
-    with col_d:
-        st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)))
-
-    # BEBIDA RIO
-    mudanca_rio = base_rio * var_total
-    with col_r:
-        st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)))
-
-st.divider()
-st.caption("Atualizado via CCCV e Yahoo Finance.")
