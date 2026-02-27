@@ -5,8 +5,11 @@ import requests
 import base64
 import os
 
-# --- PRIMEIRO AS FUNÇÕES (Definição) ---
-# Se o NameError ainda aparecer, certifique-se de que essa função está ANTES das chamadas.
+# --- 1. CONFIGURAÇÃO DA PÁGINA (Coloquei no topo por boas práticas) ---
+st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
+
+# --- 2. FUNÇÕES DE BUSCA ---
+# Movi as funções para cima para que elas já existam quando o site for desenhado
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -19,33 +22,24 @@ def buscar_dados_cccv():
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
         return dura, rio
-    except Exception as e:
-        # Fallback para evitar erro de NameError se o site falhar
+    except:
         return 1694.00, 1349.00 
 
 def buscar_mercado():
     try:
-        # AQUI FOI A CORREÇÃO: Pegando dados diretos via Ticker
         ticker_ny = yf.Ticker("KC=F")
         ticker_usd = yf.Ticker("USDBRL=X")
-        
-        # Pega os dados prontos do Yahoo Finance
         info_ny = ticker_ny.info
         info_usd = ticker_usd.info
-        
-        # Preço Atual para exibir na métrica
         cot_ny = info_ny.get('regularMarketPrice', 0.0)
-        cot_usd = info_usd.get('regularMarketPrice', 0.0)
-        
-        # PEGANDO A PORCENTAGEM EXATA QUE O YAHOO CALCULOU (ex: -0.80)
-        # Dividimos por 100 para o Streamlit formatar com % corretamente.
         v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
         v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
-        
         return cot_ny, v_ny, cot_usd, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0
 
+# --- 3. FUNÇÃO DE ESTILO E FUNDO (ATUALIZADA) ---
 def add_bg_and_style(image_file):
     if os.path.exists(image_file):
         with open(image_file, "rb") as f:
@@ -54,54 +48,45 @@ def add_bg_and_style(image_file):
             f"""
             <style>
             .stApp {{
-                # Fundo com o seu logo centralizado
-                background-image: url("data:image/png;base64,{encoded_string}");
-                background-size: contain; # Garante que o logo inteiro apareça
-                background-position: center; # Centraliza o logo
-                background-repeat: no-repeat; # Impede o logo de se repetir
-                background-attachment: fixed; # Mantém o fundo fixo no scroll
-                # Cor creme suave de fundo para combinar com o branco do logo
-                background-color: #FDF1D8; 
+                /* Apliquei um filtro escuro de 60% para que o texto apareça */
+                background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/avif;base64,{encoded_string}");
+                background-size: cover;
+                background-position: center;
+                background-attachment: fixed;
             }}
-            # Estilização global - Texto escuro para fundo claro
+            /* Mudei a cor do texto para combinar com os tons dourados e verdes da foto */
             h1, h2, h3, p, span, label, div {{
-                color: #31333F !important; # Cor escura padrão para leitura
-                text-shadow: none !important; # Remove a sombra branca original
+                color: #FFEFC1 !important; /* Creme dourado suave */
+                text-shadow: 1px 1px 3px rgba(0,0,0,1) !important;
             }}
-            # Título Principal - Usando a cor laranja do seu logo
             .main-title {{
                 text-align: center;
                 font-size: 50px !important;
                 font-weight: bold;
                 margin-bottom: 20px;
-                color: #B2572E !important; # Laranja queimado do logo
+                color: #B5E0A0 !important; /* Verde claro suave das folhas */
             }}
-            # Ajuste de cor para as métricas e alvo (não altera o valor)
-            [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
-                color: inherit !important;
-            }}
-            # Ajuste de cor para os textos dentro de colunas
-            .stMarkdown p {{
-                color: #31333F !important;
+            /* Mudei a cor do Criado por também */
+            h1#criado-por-marcos-gomes {{
+                color: #FFEFC1 !important;
+                text-shadow: 1px 1px 3px rgba(0,0,0,1) !important;
             }}
             </style>
             """,
             unsafe_allow_html=True
         )
 
-# --- 2. CONFIGURAÇÃO E EXECUÇÃO ---
-# Mantendo o visual creme/marrom do seu site com o logo centralizado.
-st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
-add_bg_and_style('logo_cafe.png')
+# --- 4. EXECUÇÃO DO PAINEL ---
+# ATENÇÃO: Verifique se o nome do seu arquivo de imagem está correto na pasta
+# Se for .avif, mantenha .avif; se for .png ou .jpg, mude aqui.
+add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-# AQUI O ERRO FOI CORRIGIDO: Chamando as funções depois de criadas
-# Se ainda der NameError, confira se o seu código original chama as funções.
+# Chamando as funções
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
-# --- 3. CONTEÚDO DO SITE (Sem alterações) ---
 st.divider()
 st.markdown("### 📖 Como funciona este Painel?")
 st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
@@ -109,13 +94,13 @@ st.write("Este site realiza uma simulação do impacto do mercado financeiro glo
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio.")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York e do Dólar.")
+    st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos as variações sobre o preço base.")
+    st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base.")
 
 st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
@@ -124,7 +109,7 @@ if ny_p == 0:
     st.warning("Carregando dados da bolsa...")
 else:
     var_total = ny_v + usd_v
-    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF0000"
+    cor_tendencia = "#00FF00" if var_total >= 0 else "#FF4B4B" # Mudei para um vermelho mais visível
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
@@ -134,17 +119,19 @@ else:
     st.divider()
     col_d, col_r = st.columns(2)
 
+    # BEBIDA DURA
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
         st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)))
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
+    # BEBIDA RIO
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
         st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
-        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)))
+        st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
 st.divider()
 st.caption("Atualizado via CCCV e Yahoo Finance.")
