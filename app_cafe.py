@@ -29,27 +29,23 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        ticker_ny = yf.Ticker("KC=F")
-        # CORREÇÃO: Ticker LRC=F é mais estável para Londres (Robusta)
-        ticker_lon = yf.Ticker("LRC=F") 
-        ticker_usd = yf.Ticker("USDBRL=X")
+        # Tickers: KC=F (Arábica NY), LRC=F (Robusta Londres), USDBRL=X (Dólar)
+        tickers = ["KC=F", "LRC=F", "USDBRL=X"]
+        dados = yf.download(tickers, period="2d", interval="1d", progress=False)
         
-        # Coleta de dados com fallback para garantir que não venha 0.0
-        hist_ny = ticker_ny.history(period="2d")
-        hist_lon = ticker_lon.history(period="2d")
-        hist_usd = ticker_usd.history(period="2d")
+        # Extração de Preços (Fechamento mais recente)
+        ny_p = dados['Close']['KC=F'].iloc[-1]
+        lon_p = dados['Close']['LRC=F'].iloc[-1]
+        usd_p = dados['Close']['USDBRL=X'].iloc[-1]
+
+        # Cálculo das Variações (Hoje vs Ontem)
+        v_ny = (ny_p / dados['Close']['KC=F'].iloc[-2]) - 1
+        v_lon = (lon_p / dados['Close']['LRC=F'].iloc[-2]) - 1
+        v_usd = (usd_p / dados['Close']['USDBRL=X'].iloc[-2]) - 1
         
-        cot_ny = hist_ny['Close'].iloc[-1]
-        v_ny = (hist_ny['Close'].iloc[-1] / hist_ny['Close'].iloc[-2]) - 1
-        
-        cot_lon = hist_lon['Close'].iloc[-1]
-        v_lon = (hist_lon['Close'].iloc[-1] / hist_lon['Close'].iloc[-2]) - 1
-        
-        cot_usd = hist_usd['Close'].iloc[-1]
-        v_usd = (hist_usd['Close'].iloc[-1] / hist_usd['Close'].iloc[-2]) - 1
-        
-        return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
-    except:
+        return ny_p, v_ny, lon_p, v_lon, usd_p, v_usd
+    except Exception as e:
+        # Se falhar, retorna zeros para não quebrar o código
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
 # --- 3. FUNÇÃO DE ESTILO E FUNDO ---
@@ -85,37 +81,24 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
 add_bg_and_style('fundo_cafe_fazenda.avif')
 
-st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Previsão do Café ☕</h1>', unsafe_allow_html=True)
 
+# Busca os dados
 base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
-st.markdown("### 📖 Como funciona este Painel?")
-st.write("Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo.")
 
-exp_col1, exp_col2, exp_col3 = st.columns(3)
-with exp_col1:
-    st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura, Bebida Rio e Conilon diretamente do site do CCCV em Vitória.")
-with exp_col2:
-    st.markdown("**2. Variação Combinada**")
-    st.write("O sistema monitora a oscilação da Bolsa de NY (Arábica), Bolsa de Londres (Conilon) e do Dólar Comercial.")
-with exp_col3:
-    st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações das bolsas e do Dólar sobre o preço base para prever a tendência.")
-
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
-st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
-
-if ny_p == 0:
-    st.warning("Carregando dados da bolsa...")
+# Verificação de segurança: Se os dados das bolsas não carregarem
+if ny_p == 0 or lon_p == 0:
+    st.warning("⚠️ Aguardando conexão com as bolsas de valores (Yahoo Finance). Tente atualizar a página em instantes.")
 else:
+    # MÉTRICAS DO MERCADO
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
     c2.metric("Bolsa Londres (Conilon)", f"{lon_p:.2f} pts", f"{lon_v:.2%}")
@@ -124,10 +107,11 @@ else:
     var_total_arabica = ny_v + usd_v
     var_total_conilon = lon_v + usd_v
     
-    c4.metric("Tendência Arábica", f"{(var_total_arabica*100):.2f}%")
+    c4.metric("Tendência Geral", f"{(var_total_arabica*100):.2f}%")
 
     st.divider()
     
+    # --- ARÁBICA ---
     st.markdown("### 🌿 Café Arábica")
     col_d, col_r = st.columns(2)
     cor_tendencia_a = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
@@ -146,6 +130,7 @@ else:
 
     st.divider()
 
+    # --- CONILON ---
     st.markdown("### 🍂 Café Conilon")
     col_c, col_info_c = st.columns(2)
     cor_tendencia_c = "#00FF00" if var_total_conilon >= 0 else "#FF4B4B"
@@ -160,12 +145,6 @@ else:
         st.write(f"Variação Combinada (Londres + Dólar): **{var_total_conilon:.2%}**")
 
 st.divider()
-with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
-    st.markdown("""
-    ### A Matemática do Mercado
-    O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de forças globais:
-    1. **Bolsas Mundiais:** O Arábica segue Nova York (ICE) e o Conilon segue Londres (ICE Europe).
-    2. **Dólar:** Como o café é uma exportação, se o dólar sobe, o seu café vale mais em Reais.
-    """)
+st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
 
-st.caption("Atualizado via CCCV e Yahoo Finance.")
+st.caption("Fontes: CCCV Vitória e Yahoo Finance.")
