@@ -33,17 +33,18 @@ def add_bg_and_style(image_file):
                 font-size: 50px !important;
                 font-weight: bold;
                 margin-bottom: 20px;
-                color: #F1C40F !important; /* Cor dourada para o título principal */
+                color: #F1C40F !important;
             }}
             </style>
             """,
             unsafe_allow_html=True
         )
 
+# Tenta carregar a imagem de fundo
 add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 
 # --- TÍTULO PRINCIPAL NO TOPO ---
-st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Painel do Café ☕</h1>', unsafe_allow_html=True)
 
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
@@ -87,7 +88,7 @@ with exp_col3:
     st.markdown("**3. Alvo Estimado**")
     st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 base_dura, base_rio = buscar_dados_cccv()
@@ -121,5 +122,23 @@ else:
         st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
+# --- OPÇÃO PARA O PRODUTOR ENTENDER (FINAL DO SITE) ---
 st.divider()
+with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
+    st.markdown("""
+    ### A Matemática do Mercado
+    O preço do café no Espírito Santo não muda ao acaso. Ele é o reflexo de duas forças globais:
+    
+    1. **Bolsa de Nova York (ICE):** É onde o mundo define o valor do café Arábica. Se lá o preço sobe, o mercado aqui tende a acompanhar.
+    2. **Dólar:** Como o café é uma exportação, o produtor recebe o valor convertido. Se o dólar sobe, o seu café vale mais em Reais.
+    
+    **Como o cálculo é feito?**
+    Nós somamos as duas variações do dia. Por exemplo:
+    * Se a Bolsa de NY subir **1%** e o Dólar subir **1%**, a tendência é de uma alta de **2%** no preço físico.
+    * Se a Bolsa subir **1%** mas o Dólar cair **1%**, o preço tende a ficar **estável**.
+    
+    **Resultado Final:**
+    Pegamos o preço oficial de hoje do **CCCV (Vitória)** e aplicamos essa porcentagem. O "Alvo Estimado" mostra qual seria o preço justo caso a cooperativa seguisse exatamente a movimentação do mercado financeiro agora.
+    """)
+
 st.caption("Atualizado via CCCV e Yahoo Finance.")
