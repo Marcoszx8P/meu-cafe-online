@@ -94,5 +94,5 @@ with exp_col3:
     st.markdown("**3. Alvo Estimado**")
     st.write("Previsão baseada na soma das variações sobre o preço base.")
 
-# Informação sobre o horário do CCCV
-st.info("🕒 **Nota sobre o fechamento:** O CCCV publica os valores exatos de fechamento do dia entre **16:00 e 17:00**. Antes desse horário, o site utiliza o fechamento do dia útil anterior como base de cálculo
+# --- BLOCO CORRIGIDO DO CCCV ---
+st.info("🕒 **Nota sobre o fechamento:** O CCCV publica os valores exatos de fechamento do dia entre **16:00 e 17:00**. Antes desse horário, o
