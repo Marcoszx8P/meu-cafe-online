@@ -16,17 +16,26 @@ def buscar_dados_cccv():
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
+        
+        # Busca Bebida Dura
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
-        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
+        
+        # Busca Bebida Rio
+        rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
-        return dura, rio
+        
+        # NOVO: Busca Conilon (Tipo 7/8)
+        conilon_str = df.loc[df[0].str.contains("7/8", case=False), 1].values[0]
+        conilon = float(str(conilon_str).replace('.', '').replace(',', '.'))
+        
+        return dura, rio, conilon
     except:
-        return 1694.00, 1349.00 
+        return 1694.00, 1349.00, 1100.00 # Valores padrão caso falhe
 
 def buscar_mercado():
     try:
-        ticker_ny = yf.Ticker("KC=F")
+        ticker_ny = yf.Ticker("KC=F") # Arábica
         ticker_usd = yf.Ticker("USDBRL=X")
         info_ny = ticker_ny.info
         info_usd = ticker_usd.info
@@ -75,13 +84,12 @@ def add_bg_and_style(image_file):
         st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
-# TROCADO PARA O NOME QUE VOCÊ PEDIU:
 add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-# Chamando as funções
-base_dura, base_rio = buscar_dados_cccv()
+# Chamando as funções (agora com 3 valores de retorno da CCCV)
+base_dura, base_rio, base_conilon = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
@@ -91,7 +99,7 @@ st.write("Este site realiza uma simulação do impacto do mercado financeiro glo
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV em Vitória.")
+    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura, Rio e Conilon diretamente do site do CCCV em Vitória.")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
     st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e do Dólar Comercial.")
@@ -114,24 +122,31 @@ else:
     c3.metric("Tendência Combinada", f"{(var_total*100):.2f}%")
 
     st.divider()
-    col_d, col_r = st.columns(2)
+    
+    # Criando 3 colunas para os tipos de café
+    col_d, col_r, col_c = st.columns(3)
 
     # BEBIDA DURA
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 35px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
     # BEBIDA RIO
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 35px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
-st.divider()
-# --- OPÇÃO PARA O PRODUTOR ENTENDER (FINAL DO SITE) ---
+    # NOVO: CAFÉ CONILON
+    mudanca_conilon = base_conilon * var_total
+    with col_c:
+        st.subheader("☕ Café CONILON")
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 35px;'>R$ {base_conilon + mudanca_conilon:.2f}</h2>", unsafe_allow_html=True)
+        st.metric(label="Alvo Estimado (7/8)", value="", delta=float(round(mudanca_conilon, 2)), delta_color="normal")
+
 st.divider()
 with st.expander("🧐 Produtor, clique aqui para entender como chegamos a esses valores"):
     st.markdown("""
