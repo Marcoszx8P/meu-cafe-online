@@ -11,7 +11,7 @@ st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wid
 
 # --- 2. FUNÇÕES DE BUSCA ---
 
-@st.cache_data(ttl=600) # Evita erros de recarregamento (removeChild)
+@st.cache_data(ttl=600)
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -28,15 +28,17 @@ def buscar_dados_cccv():
         conilon = float(str(conilon_str).replace('.', '').replace(',', '.'))
         return dura, rio, conilon
     except:
-        return 1694.00, 1349.00, 1050.00 
+        return 1694.00, 1348.04, 1047.21
 
-@st.cache_data(ttl=60) # Atualiza Londres a cada 1 minuto
+@st.cache_data(ttl=60)
 def buscar_londres_investing():
+    """Busca dados diretamente do Investing.com"""
     url = "https://br.investing.com/commodities/london-coffee"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
     try:
         response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
+        # Captura preço e variação do site
         preco_texto = soup.find("div", {"data-test": "instrument-price-last"}).text
         var_texto = soup.find("span", {"data-test": "instrument-price-change-percent"}).text
         
@@ -55,7 +57,7 @@ def buscar_mercado():
         cot_usd = ticker_usd.info.get('regularMarketPrice', 0.0)
         v_usd = ticker_usd.info.get('regularMarketChangePercent', 0.0) / 100
         
-        # Londres via Investing
+        # Londres via Investing.com
         cot_ld, v_ld = buscar_londres_investing()
         
         return cot_ny, v_ny, cot_ld, v_ld, cot_usd, v_usd
@@ -128,9 +130,12 @@ if ny_p == 0:
 else:
     c1, c2, c3 = st.columns(3)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pontos", f"{ny_v:.2%}")
-    # Londres exibido exatamente como no Investing
-    c2.metric("Londres (Investing)", f"{ld_p:.0f}", f"{ld_v:.2%}") 
-    c3.metric("preça Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
+    
+    # Exibição Londres formato 3.630
+    londres_formatado = f"{ld_p:,.0f}".replace(',', '.')
+    c2.metric("Londres (Investing)", londres_formatado, f"{ld_v:.2%}") 
+    
+    c3.metric("peça Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
     var_total_arabica = ny_v + usd_v
     var_total_conilon = ld_v + usd_v
@@ -143,27 +148,27 @@ else:
     cor_dura = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
     with col_d:
         st.subheader("☕ DURA")
-        st.markdown(f"## R$ {base_dura + mudanca_dura:.2f}")
-        st.caption("Alvo Estimado")
-        st.markdown(f"<span style='color:{cor_dura}'>{mudanca_dura:+.2f}</span>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:white !important;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.write("Alvo Estimado")
+        st.metric(label="", value="", delta=f"{mudanca_dura:.2f}")
 
     # BEBIDA RIO
     mudanca_rio = base_rio * var_total_arabica
     cor_rio = "#00FF00" if var_total_arabica >= 0 else "#FF4B4B"
     with col_r:
         st.subheader("☕ Bebida RIO")
-        st.markdown(f"## R$ {base_rio + mudanca_rio:.2f}")
-        st.caption("Alvo Estimado")
-        st.markdown(f"<span style='color:{cor_rio}'>{mudanca_rio:+.2f}</span>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:white !important;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.write("Alvo Estimado")
+        st.metric(label="", value="", delta=f"{mudanca_rio:.2f}")
 
     # CONILON
     mudanca_conilon = base_conilon * var_total_conilon
     cor_conilon = "#00FF00" if var_total_conilon >= 0 else "#FF4B4B"
     with col_c:
         st.subheader("☕ CONILON Tipo 7")
-        st.markdown(f"## R$ {base_conilon + mudanca_conilon:.2f}")
-        st.caption("Alvo Estimado")
-        st.markdown(f"<span style='color:{cor_conilon}'>{mudanca_conilon:+.2f}</span>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:white !important;'>R$ {base_conilon + mudanca_conilon:.2f}</h2>", unsafe_allow_html=True)
+        st.write("Alvo Estimado")
+        st.metric(label="", value="", delta=f"{mudanca_conilon:.2f}")
 
 st.divider()
 st.caption("Fontes: CCCV Vitória, Investing.com (Londres) e Yahoo Finance (NY/Dólar).")
