@@ -71,7 +71,7 @@ else:
             label="Alvo Estimado", 
             value=f"R$ {base_dura + mudanca_dura:.2f}", 
             delta=f"R$ {mudanca_dura:.2f}",
-            delta_color="normal"
+            delta_color="normal"  # <--- ISSO GARANTE: VERDE PARA ALTA, VERMELHO PARA QUEDA
         )
 
     # Bebida Rio
@@ -82,5 +82,5 @@ else:
             label="Alvo Estimado", 
             value=f"R$ {base_rio + mudanca_rio:.2f}", 
             delta=f"R$ {mudanca_rio:.2f}",
-            delta_color="normal"
+            delta_color="normal"  # <--- ISSO GARANTE: VERDE PARA ALTA, VERMELHO PARA QUEDA
         )
