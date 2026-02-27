@@ -112,7 +112,7 @@ st.write("Este site realiza uma simulação do impacto do mercado financeiro glo
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write(f"Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio e Conilon diretamente do site dos sites oficiais do Cafe")
+    st.write(f"Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio e Conilon diretamente dos sites oficiais do Cafe")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
     st.write("O sistema monitora em tempo real a oscilação da Bolsa de Nova York (Arábica) e da Bolsa de Londres (Conilon) e do Dólar Comercial.")
