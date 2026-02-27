@@ -5,12 +5,11 @@ import requests
 import base64
 import os
 
-# 1. Primeiro as funções (Definição)
+# --- FUNÇÕES DE BUSCA ---
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        # Tenta pegar os dados reais
         response = requests.get(url, headers=headers, timeout=10)
         tabelas = pd.read_html(response.text)
         df = tabelas[0]
@@ -20,7 +19,6 @@ def buscar_dados_cccv():
         rio = float(str(rio_str).replace('.', '').replace(',', '.'))
         return dura, rio
     except:
-        # Fallback se o site falhar
         return 1694.00, 1349.00 
 
 def buscar_mercado():
@@ -32,17 +30,19 @@ def buscar_mercado():
         info_ny = ticker_ny.info
         info_usd = ticker_usd.info
         
-        cot_ny = info_ny.get('regularMarketPrice', 0.0)
-        # Pega a porcentagem exata que você viu na tela (-0.80)
+        # Pega a porcentagem exata que o Yahoo calculou (-0.80)
         v_ny = info_ny.get('regularMarketChangePercent', 0.0) / 100
-        
-        cot_usd = info_usd.get('regularMarketPrice', 0.0)
         v_usd = info_usd.get('regularMarketChangePercent', 0.0) / 100
+        
+        # Preço atual
+        cot_ny = info_ny.get('regularMarketPrice', 0.0)
+        cot_usd = info_usd.get('regularMarketPrice', 0.0)
         
         return cot_ny, v_ny, cot_usd, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0
 
+# --- FUNÇÃO DE FUNDO E ESTILO ---
 def add_bg_and_style(image_file):
     if os.path.exists(image_file):
         with open(image_file, "rb") as f:
@@ -51,35 +51,45 @@ def add_bg_and_style(image_file):
             f"""
             <style>
             .stApp {{
-                background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/jpg;base64,{encoded_string}");
-                background-size: cover;
+                background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url("data:image/png;base64,{encoded_string}");
+                background-size: contain; /* Contain mantém o logo inteiro visível */
                 background-position: center;
+                background-repeat: no-repeat; /* Evita que o logo se repita */
                 background-attachment: fixed;
+                background-color: #FDF1D8; /* Fundo creme suave igual ao da imagem */
             }}
+            /* Estilização global */
             h1, h2, h3, p, span, label, div {{
-                color: white !important;
-                text-shadow: 2px 2px 4px rgba(0,0,0,1) !important;
+                color: #31333F !important; /* Cor de texto padrão escura para leitura */
+                text-shadow: none !important; /* Remove sombra para fundo claro */
             }}
+            /* Título Principal */
             .main-title {{
                 text-align: center;
                 font-size: 50px !important;
                 font-weight: bold;
                 margin-bottom: 20px;
-                color: #F1C40F !important;
+                color: #B2572E !important; /* Laranja queimado do logo para o título */
+            }}
+            /* Métricas e Alvo */
+            [data-testid="stMetricValue"], [data-testid="stMetricDelta"] {{
+                color: inherit !important;
             }}
             </style>
             """,
             unsafe_allow_html=True
         )
 
-# 2. Configuração e Estilo
+# --- EXECUÇÃO DO SITE ---
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
-add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
 
-# 3. Título e Conteúdo
+# ALTERAÇÃO AQUI: Nome do seu novo arquivo de imagem
+add_bg_and_style('logo_cafe.png')
+
+# TÍTULO PRINCIPAL
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
-# AQUI O ERRO FOI CORRIGIDO: Chamando as funções depois de criadas
+# Chamando as funções
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
 
@@ -98,8 +108,8 @@ with exp_col3:
     st.markdown("**3. Alvo Estimado**")
     st.write("Aplicamos a soma das variações de NY e do Dólar sobre o preço base para prever a tendência do mercado físico.")
 
-st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas.")
-st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
+st.info("⚠️ **Aviso:** Este site está em fase de testes. Os valores são estimativas matemáticas para auxiliar na tomada de decisão e não garantem o preço final praticado pelas cooperativas.")
+st.markdown("<h1 style='text-align: center; color: #31333F !important;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
 
 if ny_p == 0:
     st.warning("Carregando dados da bolsa...")
