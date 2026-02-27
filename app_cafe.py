@@ -37,7 +37,22 @@ def buscar_mercado():
     except:
         return 0.0, 0.0, 0.0, 0.0
 
-st.title("📊 Monitor de Tendência do Café - ES")
+st.divider()
+with st.expander("📖 Como funciona este Monitor? (Clique para ver detalhes)"):
+    st.markdown(f"""
+    ### ☕ Lógica de Cálculo
+    Este site realiza uma simulação do impacto do mercado financeiro global no preço físico do café no Espírito Santo:
+    
+    1.  **Preço Base:** Buscamos diariamente as cotações oficiais de **Bebida Dura** e **Bebida Rio** diretamente do site do **CCCV** (Centro do Comércio de Café de Vitória).
+    2.  **Variação Combinada:** O sistema monitora em tempo real a oscilação da **Bolsa de Nova York (KC=F)** e do **Dólar (USD/BRL)**. 
+    3.  **Alvo Estimado:** Aplicamos a soma dessas variações sobre o preço base. Se a Bolsa sobe 1% e o Dólar sobe 1%, o alvo estimado subirá aproximadamente 2% sobre o valor de fechamento do CCCV.
+
+    ---
+    ⚠️ **Aviso de Versão Beta**
+    Este site ainda está em fase de testes (**Beta**). Os valores apresentados são estimativas matemáticas para auxiliar na tomada de decisão e não devem ser considerados como garantia de preço de compra ou venda. As cooperativas locais podem aplicar diferenciais (basis) específicos.
+    
+    **Criado por: Marcos Gomes**
+    """)
 
 base_dura, base_rio = buscar_dados_cccv()
 ny_p, ny_v, usd_p, usd_v = buscar_mercado()
