@@ -18,6 +18,7 @@ def buscar_dados_cccv():
         df = tabelas[0]
         dura_str = df.loc[df[0].str.contains("dura", case=False), 1].values[0]
         rio_str = df.loc[df[0].str.contains("rio", case=False), 1].values[0]
+        # Adicionado conforme solicitado
         conilon_str = df.loc[df[0].str.contains("conilon", case=False), 1].values[0]
         
         dura = float(str(dura_str).replace('.', '').replace(',', '.'))
@@ -29,24 +30,26 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Usando download em lote para evitar bloqueios e garantir que os dados venham
-        tickers = ["KC=F", "LRC=F", "USDBRL=X"]
-        dados = yf.download(tickers, period="2d", interval="1d", progress=False)
+        # Tickers estáveis: KC=F (Arábica), LRC=F (Conilon Londres), USDBRL=X (Dólar)
+        t_ny = yf.Ticker("KC=F")
+        t_lon = yf.Ticker("LRC=F")
+        t_usd = yf.Ticker("USDBRL=X")
         
-        if dados.empty:
-            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-
-        # Preços atuais
-        ny_p = dados['Close']['KC=F'].iloc[-1]
-        lon_p = dados['Close']['LRC=F'].iloc[-1]
-        usd_p = dados['Close']['USDBRL=X'].iloc[-1]
-
-        # Variações
-        v_ny = (ny_p / dados['Close']['KC=F'].iloc[-2]) - 1
-        v_lon = (lon_p / dados['Close']['LRC=F'].iloc[-2]) - 1
-        v_usd = (usd_p / dados['Close']['USDBRL=X'].iloc[-2]) - 1
+        # O segredo para não dar 0.00: usar o histórico dos últimos 2 dias
+        h_ny = t_ny.history(period="2d")
+        h_lon = t_lon.history(period="2d")
+        h_usd = t_usd.history(period="2d")
         
-        return ny_p, v_ny, lon_p, v_lon, usd_p, v_usd
+        cot_ny = h_ny['Close'].iloc[-1]
+        v_ny = (h_ny['Close'].iloc[-1] / h_ny['Close'].iloc[-2]) - 1
+        
+        cot_lon = h_lon['Close'].iloc[-1]
+        v_lon = (h_lon['Close'].iloc[-1] / h_lon['Close'].iloc[-2]) - 1
+        
+        cot_usd = h_usd['Close'].iloc[-1]
+        v_usd = (h_usd['Close'].iloc[-1] / h_usd['Close'].iloc[-2]) - 1
+        
+        return cot_ny, v_ny, cot_lon, v_lon, cot_usd, v_usd
     except:
         return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 
@@ -83,7 +86,7 @@ def add_bg_and_style(image_file):
             unsafe_allow_html=True
         )
     else:
-        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado.")
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
 add_bg_and_style('fundo_cafe_fazenda.avif')
@@ -95,11 +98,9 @@ ny_p, ny_v, lon_p, lon_v, usd_p, usd_v = buscar_mercado()
 
 st.divider()
 
-# CORREÇÃO DO ERRO DE CARREGAMENTO:
+# Logica de exibição original mantida
 if ny_p == 0 or lon_p == 0:
-    st.warning("Carregando dados das bolsas mundiais... Se demorar, tente atualizar a página.")
-    # Força uma pequena pausa e tenta novamente se rodar localmente
-    st.button("Atualizar Dados Manulamente")
+    st.warning("Carregando dados da bolsa... Se persistir, verifique sua conexão.")
 else:
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pts", f"{ny_v:.2%}")
@@ -145,4 +146,5 @@ else:
         st.write(f"Variação Combinada (Londres + Dólar): **{var_total_conilon:.2%}**")
 
 st.divider()
+st.markdown("<h3 style='text-align: center;'>Criado por: Marcos Gomes</h3>", unsafe_allow_html=True)
 st.caption("Atualizado via CCCV e Yahoo Finance.")
