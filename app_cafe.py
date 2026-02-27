@@ -8,7 +8,7 @@ import os
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Previsão Café ES", page_icon="☕", layout="wide")
 
-# --- 2. FUNÇÕES DE BUSCA (Corrigidas) ---
+# --- 2. FUNÇÕES DE BUSCA ---
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
     headers = {"User-Agent": "Mozilla/5.0"}
@@ -52,7 +52,7 @@ def add_bg_and_style(image_file):
                 background-position: center;
                 background-attachment: fixed;
             }}
-            /* TEXTOS EM BRANCO PURO COM SOMBRA FORTE */
+            /* TEXTOS EM BRANCO PURO COM SOMBRA */
             h1, h2, h3, p, span, label, div {{
                 color: #FFFFFF !important;
                 text-shadow: 2px 2px 8px rgba(0,0,0,1) !important;
@@ -71,9 +71,12 @@ def add_bg_and_style(image_file):
             """,
             unsafe_allow_html=True
         )
+    else:
+        st.sidebar.error(f"Erro: O arquivo '{image_file}' não foi encontrado na pasta.")
 
 # --- 4. EXECUÇÃO DO PAINEL ---
-add_bg_and_style('delicioso_cafe.avif')
+# TROCADO PARA O NOME QUE VOCÊ PEDIU:
+add_bg_and_style('fundo_cafe_fazenda.avif')
 
 st.markdown('<h1 class="main-title">Previsao do Cafe ☕</h1>', unsafe_allow_html=True)
 
@@ -88,13 +91,13 @@ st.write("Este site realiza uma simulação do impacto do mercado financeiro glo
 exp_col1, exp_col2, exp_col3 = st.columns(3)
 with exp_col1:
     st.markdown("**1. Preço Base (CCCV)**")
-    st.write("Buscamos diariamente as cotações oficiais de Bebida Dura e Bebida Rio diretamente do site do CCCV.")
+    st.write("Buscamos diariamente as cotações oficiais diretamente do site do CCCV.")
 with exp_col2:
     st.markdown("**2. Variação Combinada**")
-    st.write("Monitoramos em tempo real a oscilação da Bolsa de Nova York e do Dólar.")
+    st.write("Monitoramos a Bolsa de Nova York e o Dólar em tempo real.")
 with exp_col3:
     st.markdown("**3. Alvo Estimado**")
-    st.write("Aplicamos a soma das variações sobre o preço base.")
+    st.write("Aplicamos as variações sobre o preço base.")
 
 st.info("⚠️ **Aviso:** Este site está em fase de testes.")
 st.markdown("<h1 style='text-align: center;'>Criado por: Marcos Gomes</h1>", unsafe_allow_html=True)
