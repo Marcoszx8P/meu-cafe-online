@@ -62,21 +62,26 @@ def buscar_dados_cccv():
 
 def buscar_mercado():
     try:
-        # Aumentei para 7d para garantir que pegue o fechamento anterior mesmo em fins de semana
-        cafe_ny = yf.download("KC=F", period="7d", interval="1d", progress=False)['Close']
-        dolar = yf.download("USDBRL=X", period="7d", interval="1d", progress=False)['Close']
+        # Tickers para Café NY e Dólar
+        tk_ny = yf.Ticker("KC=F")
+        tk_usd = yf.Ticker("USDBRL=X")
         
-        # Limpeza para evitar erros de dados vazios (NaN)
-        cafe_ny = cafe_ny.dropna()
-        dolar = dolar.dropna()
+        # Obtendo dados em tempo real (FastInfo ou Info)
+        # Isso busca o preço atual e o fechamento anterior para calcular a variação do dia
+        dados_ny = tk_ny.history(period="2d")
+        dados_usd = tk_usd.history(period="2d")
 
-        cot_ny = float(cafe_ny.iloc[-1])
-        v_ny = (cot_ny / float(cafe_ny.iloc[-2])) - 1
+        # Café NY
+        cot_ny = dados_ny['Close'].iloc[-1]
+        prev_ny = dados_ny['Close'].iloc[-2]
+        v_ny = (cot_ny / prev_ny) - 1  # Este é o -0,57% da sua imagem
+
+        # Dólar
+        cot_usd = dados_usd['Close'].iloc[-1]
+        prev_usd = dados_usd['Close'].iloc[-2]
+        v_usd = (cot_usd / prev_usd) - 1
         
-        cot_usd = float(dolar.iloc[-1])
-        v_usd = (cot_usd / float(dolar.iloc[-2])) - 1
-        
-        return cot_ny, v_ny, cot_usd, v_usd
+        return float(cot_ny), float(v_ny), float(cot_usd), float(v_usd)
     except:
         return 0.0, 0.0, 0.0, 0.0
 
