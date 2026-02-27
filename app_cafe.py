@@ -22,14 +22,18 @@ def add_bg_and_style(image_file):
                 background-position: center;
                 background-attachment: fixed;
             }}
+            /* Estilização global */
             h1, h2, h3, p, span, label, div {{
                 color: white !important;
                 text-shadow: 2px 2px 4px rgba(0,0,0,1) !important;
             }}
-            /* Estilo para as métricas */
-            [data-testid="stMetricValue"] {{
-                padding: 5px 10px;
-                border-radius: 5px;
+            /* Título Principal */
+            .main-title {{
+                text-align: center;
+                font-size: 50px !important;
+                font-weight: bold;
+                margin-bottom: 20px;
+                color: #F1C40F !important; /* Cor dourada para o título principal */
             }}
             </style>
             """,
@@ -37,6 +41,9 @@ def add_bg_and_style(image_file):
         )
 
 add_bg_and_style('historia_do_cafe-968x660-1-968x560.jpg')
+
+# --- TÍTULO PRINCIPAL NO TOPO ---
+st.markdown('<h1 class="main-title">Painel do Cafe ☕</h1>', unsafe_allow_html=True)
 
 def buscar_dados_cccv():
     url = "https://www.cccv.org.br/cotacao/"
@@ -90,8 +97,6 @@ if ny_p == 0:
     st.warning("Carregando dados da bolsa...")
 else:
     var_total = ny_v + usd_v
-    
-    # Lógica de cor para o destaque: Verde para alta, Vermelho para baixa
     cor_tendencia = "#00FF00" if var_total >= 0 else "#FF0000"
 
     c1, c2, c3 = st.columns(3)
@@ -106,16 +111,14 @@ else:
     mudanca_dura = base_dura * var_total
     with col_d:
         st.subheader("☕ Bebida DURA")
-        # Injetando cor dinamicamente via Markdown para o valor principal
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_dura + mudanca_dura:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_dura, 2)), delta_color="normal")
 
     # --- BEBIDA RIO ---
     mudanca_rio = base_rio * var_total
     with col_r:
         st.subheader("☕ Bebida RIO")
-        # Injetando cor dinamicamente via Markdown para o valor principal
-        st.markdown(f"<h2 style='color:{cor_tendencia} !important;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:{cor_tendencia} !important; font-size: 40px;'>R$ {base_rio + mudanca_rio:.2f}</h2>", unsafe_allow_html=True)
         st.metric(label="Alvo Estimado", value="", delta=float(round(mudanca_rio, 2)), delta_color="normal")
 
 st.divider()
