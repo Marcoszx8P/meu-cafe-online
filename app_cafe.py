@@ -131,7 +131,7 @@ else:
     
     # Preço de Londres formatado 3.630
     londres_formatado = f"{ld_p:,.0f}".replace(',', '.')
-    c2.metric("Londres (Investing)", londres_formatado, f"{ld_v:.2%}") 
+    c2.metric("Londres (Conilon)", londres_formatado, f"{ld_v:.2%}") 
     
     c3.metric("Dolar Comercial", f"R$ {usd_p:.2f}", f"{usd_v:.2%}")
     
