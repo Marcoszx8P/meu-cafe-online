@@ -127,7 +127,7 @@ if ny_p == 0:
     st.warning("Carregando dados da bolsa...")
 else:
     c1, c2, c3 = st.columns(3)
-    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f} pontos", f"{ny_v:.2%}")
+    c1.metric("Bolsa NY (Arábica)", f"{ny_p:.2f}", f"{ny_v:.2%}")
     
     # Preço de Londres formatado 3.630
     londres_formatado = f"{ld_p:,.0f}".replace(',', '.')
